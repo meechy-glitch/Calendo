@@ -330,7 +330,10 @@ export function CalendarMobile({
             <p className="text-xs text-[#888888]">Tap + to add one</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div
+            className="flex flex-col gap-2"
+            style={{ overflowY: "auto", maxHeight: "calc(100vh - 480px)", paddingBottom: "140px" }}
+          >
             {selectedDatePosts.map((post) => (
               <PostListItem
                 key={post.id}
@@ -346,7 +349,7 @@ export function CalendarMobile({
       {/* Floating Add Button */}
       <button
         onClick={handleAddPost}
-        className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#E1306C] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#E1306C] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
       >
         <Plus className="h-6 w-6" />
         <span className="sr-only">Add post for selected date</span>

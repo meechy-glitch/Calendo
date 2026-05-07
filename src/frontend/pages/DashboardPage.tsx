@@ -97,13 +97,17 @@ export function DashboardPage() {
     setModalOpen(true)
   }
 
+  const toLocalDateString = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+  }
+
   const handleSave = async (postData: PostData) => {
     try {
       const body = {
         title: postData.title,
         caption: postData.caption,
         platform: postData.platform,
-        scheduled_date: postData.scheduledDate.toISOString().split("T")[0],
+        scheduled_date: toLocalDateString(postData.scheduledDate),
         status: postData.status,
       }
       if (modalMode === "create") {
@@ -173,15 +177,13 @@ export function DashboardPage() {
       />
 
       <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
-        {!isMobile && (
-          <div className="mb-4 flex items-center justify-between">
-            <PlatformFilter
-              activePlatforms={activePlatforms}
-              onToggle={handlePlatformToggle}
-            />
-            <ExportButton onExport={handleExport} />
-          </div>
-        )}
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <PlatformFilter
+            activePlatforms={activePlatforms}
+            onToggle={handlePlatformToggle}
+          />
+          <ExportButton onExport={handleExport} />
+        </div>
 
         {isLoading ? (
           <LoadingSkeleton />
