@@ -1,0 +1,10 @@
+.claude/
+.claude-flow/
+.hive-mind/
+.mcp.json
+venv/
+node_modules/
+.env
+__pycache__/
+*.pyc
+dist/

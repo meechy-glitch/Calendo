@@ -1,0 +1,10 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/calendo")
+SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production-min32chars")
+ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+JWT_EXPIRE_DAYS: int = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
