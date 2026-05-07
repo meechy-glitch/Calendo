@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { AuthForm } from "../components/AuthForm"
-import { registerApi, loginApi } from "../api/auth"
+import { registerApi, loginApi } from "../services/auth"
 
 export function RegisterPage() {
   const navigate = useNavigate()

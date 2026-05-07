@@ -14,7 +14,7 @@ import { FeedbackButton } from "../components/FeedbackButton"
 import { LoadingSkeleton, EmptyState } from "../components/EmptyState"
 import { ErrorToast } from "../components/ErrorToast"
 import { useMediaQuery } from "../hooks/useMediaQuery"
-import { getPosts, createPost, updatePost, deletePost, exportCSV } from "../api/posts"
+import { getPosts, createPost, updatePost, deletePost, exportCSV } from "../services/posts"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
 
