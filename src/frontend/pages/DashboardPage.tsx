@@ -222,7 +222,7 @@ export function DashboardPage() {
         onClose={() => setModalOpen(false)}
       />
 
-      <FeedbackButton onSubmit={(msg) => console.log("Feedback:", msg)} />
+      <FeedbackButton onSubmit={() => {}} />
 
       {error && <ErrorToast message={error} onClose={() => setError(null)} />}
     </div>
