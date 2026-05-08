@@ -1,6 +1,6 @@
 # Calendo
 
-Content calendar app for creative brands, agencies & startups.
+A Content calendar web app for creative brands, agencies & startups.
 
 ## Local Setup
 
