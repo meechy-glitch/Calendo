@@ -212,7 +212,7 @@ function DashboardContent() {
       <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
         {!isLoading && isCurrentMonth && (
           <div
-            className="mb-4 rounded-lg border-l-4 px-4 py-3 text-sm"
+            className="mb-6 rounded-lg border-l-4 px-4 py-3 text-sm"
             style={{
               backgroundColor: "#1A1A1A",
               borderLeftColor: "#E1306C",
@@ -243,7 +243,7 @@ function DashboardContent() {
           </div>
         )}
 
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <PlatformFilter activePlatforms={activePlatforms} onToggle={handlePlatformToggle} />
           <ExportButton onExport={handleExport} />
         </div>

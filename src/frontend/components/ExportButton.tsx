@@ -7,10 +7,10 @@ export function ExportButton({ onExport }: ExportButtonProps) {
   return (
     <button
       onClick={onExport}
-      className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
-      style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
+      className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+      style={{ borderColor: "#2A2A2A", color: "#888888", backgroundColor: "transparent" }}
     >
-      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

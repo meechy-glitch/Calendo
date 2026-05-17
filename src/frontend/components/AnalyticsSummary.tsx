@@ -35,7 +35,7 @@ export function AnalyticsSummary({ posts }: AnalyticsSummaryProps) {
   const draft = posts.filter((p) => p.status === "draft").length
 
   return (
-    <div className="mb-4 rounded-lg border border-[#2A2A2A] px-4 py-3" style={{ backgroundColor: "#1A1A1A" }}>
+    <div className="mb-6 rounded-lg border border-[#2A2A2A] px-4 py-3" style={{ backgroundColor: "#1A1A1A" }}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         {platformCounts.map(({ platform, count }) => (
           <span key={platform} className="flex items-center gap-1.5 text-sm" style={{ color: "#F5F5F5" }}>

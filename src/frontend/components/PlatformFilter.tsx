@@ -25,17 +25,15 @@ export function PlatformFilter({ activePlatforms, onToggle }: PlatformFilterProp
             key={platform.key}
             onClick={() => onToggle(platform.key)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium",
+              "flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all duration-200 text-xs font-medium",
               isActive ? "bg-[#1A1A1A] text-[#F5F5F5]" : "bg-[#1A1A1A]/50 text-[#888888]"
             )}
             style={{
-              borderWidth: "2px",
-              borderStyle: "solid",
               borderColor: isActive ? platform.color : "#2A2A2A",
             }}
           >
             <span
-              className={cn("w-2.5 h-2.5 rounded-full transition-opacity duration-200", isActive ? "opacity-100" : "opacity-40")}
+              className={cn("w-2 h-2 rounded-full transition-opacity duration-200", isActive ? "opacity-100" : "opacity-40")}
               style={{ backgroundColor: platform.color }}
             />
             <span>{platform.name}</span>

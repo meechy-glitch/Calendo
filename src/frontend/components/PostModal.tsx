@@ -129,14 +129,14 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px] border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[480px] border-[#2A2A2A] flex flex-col max-h-[90dvh]" style={{ backgroundColor: "#1A1A1A" }}>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle style={{ color: "#F5F5F5" }}>
             {mode === "create" ? "Create Post" : "Edit Post"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 py-4">
+        <div className="flex flex-col gap-5 py-4 overflow-y-auto flex-1 min-h-0">
           <div className="flex flex-col gap-2">
             <Label htmlFor="title" style={{ color: "#F5F5F5" }}>
               Title <span style={{ color: "#E1306C" }}>*</span>
@@ -271,7 +271,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           </div>
         </div>
 
-        <DialogFooter className="flex-row gap-2 sm:justify-between">
+        <DialogFooter className="flex-row gap-2 sm:justify-between flex-shrink-0 border-t border-[#2A2A2A] pt-4">
           {mode === "edit" && onDelete && (
             <Button
               variant="outline"
