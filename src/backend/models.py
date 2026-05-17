@@ -40,6 +40,8 @@ class Post(Base):
     platform = Column(Enum(PlatformEnum, native_enum=False), nullable=False)
     scheduled_date = Column(Date, nullable=False)
     status = Column(Enum(StatusEnum, native_enum=False), default=StatusEnum.draft, nullable=False)
+    scheduled_time = Column(String(5), nullable=True)
+    notes = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

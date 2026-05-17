@@ -29,6 +29,8 @@ class PostCreate(BaseModel):
     platform: PlatformEnum
     scheduled_date: date
     status: StatusEnum = StatusEnum.draft
+    scheduled_time: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class PostUpdate(BaseModel):
@@ -37,6 +39,8 @@ class PostUpdate(BaseModel):
     platform: Optional[PlatformEnum] = None
     scheduled_date: Optional[date] = None
     status: Optional[StatusEnum] = None
+    scheduled_time: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class PostResponse(BaseModel):
@@ -49,5 +53,7 @@ class PostResponse(BaseModel):
     platform: PlatformEnum
     scheduled_date: date
     status: StatusEnum
+    scheduled_time: Optional[str] = None
+    notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime

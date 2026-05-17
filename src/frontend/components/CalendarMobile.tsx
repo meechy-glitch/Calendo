@@ -20,6 +20,7 @@ export interface MobilePost {
   platform: Platform
   date: Date
   status?: "draft" | "scheduled" | "published"
+  scheduledTime?: string
 }
 
 export interface CalendarMobileProps {
@@ -66,6 +67,13 @@ function isSameDay(date1: Date, date2: Date): boolean {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate()
   )
+}
+
+function formatTime12h(time: string): string {
+  const [h, m] = time.split(":").map(Number)
+  const period = h >= 12 ? "PM" : "AM"
+  const hour = h % 12 || 12
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`
 }
 
 function isSameMonth(date1: Date, date2: Date): boolean {
@@ -193,6 +201,11 @@ function PostListItem({
           >
             {post.title}
           </span>
+          {post.scheduledTime && (
+            <span className="text-xs" style={{ color: "#888888" }}>
+              {formatTime12h(post.scheduledTime)}
+            </span>
+          )}
           <span className="text-xs capitalize" style={{ color: "#888888" }}>
             {post.platform}
           </span>

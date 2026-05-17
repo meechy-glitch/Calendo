@@ -49,6 +49,20 @@ const STATUSES: { value: PostStatus; label: string }[] = [
 ]
 
 const MAX_CAPTION_LENGTH = 2200
+const MAX_NOTES_LENGTH = 500
+
+const TIME_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "No time set" },
+  ...Array.from({ length: 24 }, (_, h) =>
+    [0, 30].map((m) => {
+      const value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+      const period = h >= 12 ? "PM" : "AM"
+      const hour = h % 12 || 12
+      const label = `${hour}:${String(m).padStart(2, "0")} ${period}`
+      return { value, label }
+    })
+  ).flat(),
+]
 
 export interface PostData {
   id?: string
@@ -57,6 +71,8 @@ export interface PostData {
   platform: Platform
   scheduledDate: Date
   status: PostStatus
+  scheduledTime?: string
+  notes?: string
 }
 
 export interface PostModalProps {
@@ -83,6 +99,8 @@ export function PostModal({
   const [platform, setPlatform] = React.useState<Platform>("instagram")
   const [date, setDate] = React.useState<Date | undefined>(undefined)
   const [status, setStatus] = React.useState<PostStatus>("draft")
+  const [scheduledTime, setScheduledTime] = React.useState("")
+  const [notes, setNotes] = React.useState("")
   const [calendarOpen, setCalendarOpen] = React.useState(false)
 
   // Reset form when modal opens or post changes
@@ -94,12 +112,16 @@ export function PostModal({
         setPlatform(post.platform)
         setDate(post.scheduledDate)
         setStatus(post.status)
+        setScheduledTime(post.scheduledTime || "")
+        setNotes(post.notes || "")
       } else {
         setTitle("")
         setCaption("")
         setPlatform("instagram")
         setDate(scheduledDate || undefined)
         setStatus("draft")
+        setScheduledTime("")
+        setNotes("")
       }
     }
   }, [isOpen, post, scheduledDate])
@@ -114,6 +136,8 @@ export function PostModal({
       platform,
       scheduledDate: date,
       status,
+      scheduledTime: scheduledTime || undefined,
+      notes: notes.trim() || undefined,
     })
     onClose()
   }
@@ -302,6 +326,69 @@ export function PostModal({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Scheduled Time Picker */}
+          <div className="flex flex-col gap-2">
+            <Label style={{ color: "#F5F5F5" }}>Scheduled Time</Label>
+            <Select
+              value={scheduledTime || "__none__"}
+              onValueChange={(v) => setScheduledTime(v === "__none__" ? "" : v)}
+            >
+              <SelectTrigger
+                className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50"
+                style={{
+                  backgroundColor: "#0F0F0F",
+                  color: scheduledTime ? "#F5F5F5" : "#888888",
+                }}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                className="border-[#2A2A2A] max-h-60"
+                style={{ backgroundColor: "#1A1A1A" }}
+              >
+                {TIME_OPTIONS.map((t) => (
+                  <SelectItem
+                    key={t.value || "__none__"}
+                    value={t.value || "__none__"}
+                    className="focus:bg-[#2A2A2A]"
+                    style={{ color: t.value ? "#F5F5F5" : "#888888" }}
+                  >
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Internal Notes */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notes" style={{ color: "#F5F5F5" }}>
+                Internal Notes
+              </Label>
+              <span
+                className="text-xs"
+                style={{
+                  color: notes.length >= MAX_NOTES_LENGTH ? "#E1306C" : "#888888",
+                }}
+              >
+                {notes.length}/{MAX_NOTES_LENGTH}
+              </span>
+            </div>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value.slice(0, MAX_NOTES_LENGTH))}
+              placeholder="e.g. get client approval, use product shot 3, needs graphic from design team"
+              rows={3}
+              className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50"
+              style={{
+                backgroundColor: "#0F0F0F",
+                color: "#F5F5F5",
+              }}
+            />
           </div>
         </div>
 

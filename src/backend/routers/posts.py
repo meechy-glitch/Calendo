@@ -39,7 +39,7 @@ def export_csv(
     posts = crud.get_posts(db, current_user.id, month)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Title", "Caption", "Platform", "Scheduled Date", "Status"])
+    writer.writerow(["Title", "Caption", "Platform", "Scheduled Date", "Scheduled Time", "Status", "Notes"])
     for p in posts:
         writer.writerow(
             [
@@ -47,7 +47,9 @@ def export_csv(
                 p.caption or "",
                 p.platform.value,
                 str(p.scheduled_date),
+                p.scheduled_time or "",
                 p.status.value,
+                p.notes or "",
             ]
         )
     output.seek(0)

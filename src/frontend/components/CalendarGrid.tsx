@@ -21,6 +21,7 @@ export interface Post {
   platform: Platform
   date: Date
   status?: PostStatus
+  scheduledTime?: string
 }
 
 export interface CalendoCalendarProps {
@@ -80,6 +81,13 @@ function isSameMonth(date1: Date, date2: Date): boolean {
   )
 }
 
+function formatTime12h(time: string): string {
+  const [h, m] = time.split(":").map(Number)
+  const period = h >= 12 ? "PM" : "AM"
+  const hour = h % 12 || 12
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`
+}
+
 function PostChip({
   post,
   onClick,
@@ -125,7 +133,10 @@ function PostChip({
       title={`${post.title} (${post.platform}) - ${status}`}
     >
       {status === "published" && <Check className="h-3 w-3 shrink-0" />}
-      <span className="truncate">{post.title}</span>
+      <span className="truncate">
+        {post.title}
+        {post.scheduledTime ? ` · ${formatTime12h(post.scheduledTime)}` : ""}
+      </span>
     </button>
   )
 }
