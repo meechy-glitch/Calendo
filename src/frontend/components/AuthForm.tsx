@@ -1,3 +1,4 @@
+"use client"
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,13 +23,7 @@ export interface AuthFormProps {
   error?: string
 }
 
-export function AuthForm({
-  mode,
-  onSubmit,
-  onToggleMode,
-  isLoading = false,
-  error,
-}: AuthFormProps) {
+export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, error }: AuthFormProps) {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
 
@@ -43,44 +38,24 @@ export function AuthForm({
     <div className="flex min-h-screen items-center justify-center p-4" style={{ backgroundColor: "#0F0F0F" }}>
       <Card
         className="w-full max-w-md border"
-        style={{
-          backgroundColor: "#1A1A1A",
-          borderColor: "#2A2A2A",
-        }}
+        style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
       >
         <CardHeader className="text-center">
-          {/* App Logo/Name */}
           <div className="mb-2 flex justify-center">
-            <span
-              className="text-2xl font-bold"
-              style={{ color: "#E1306C" }}
-            >
-              Calendo
-            </span>
+            <span className="text-2xl font-bold" style={{ color: "#E1306C" }}>Calendo</span>
           </div>
-          <CardTitle
-            className="text-xl"
-            style={{ color: "#F5F5F5" }}
-          >
+          <CardTitle className="text-xl" style={{ color: "#F5F5F5" }}>
             {isLogin ? "Welcome back" : "Create an account"}
           </CardTitle>
           <CardDescription style={{ color: "#888888" }}>
-            {isLogin
-              ? "Sign in to manage your content schedule"
-              : "Get started with Calendo today"}
+            {isLogin ? "Sign in to manage your content schedule" : "Get started with Calendo today"}
           </CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {/* Email Field */}
             <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                style={{ color: "#F5F5F5" }}
-              >
-                Email
-              </Label>
+              <Label htmlFor="email" style={{ color: "#F5F5F5" }}>Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -90,22 +65,12 @@ export function AuthForm({
                 required
                 disabled={isLoading}
                 className="placeholder:text-[#888888]"
-                style={{
-                  backgroundColor: "#0F0F0F",
-                  borderColor: "#2A2A2A",
-                  color: "#F5F5F5",
-                }}
+                style={{ backgroundColor: "#0F0F0F", borderColor: "#2A2A2A", color: "#F5F5F5" }}
               />
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                style={{ color: "#F5F5F5" }}
-              >
-                Password
-              </Label>
+              <Label htmlFor="password" style={{ color: "#F5F5F5" }}>Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -116,20 +81,13 @@ export function AuthForm({
                 minLength={8}
                 disabled={isLoading}
                 className="placeholder:text-[#888888]"
-                style={{
-                  backgroundColor: "#0F0F0F",
-                  borderColor: "#2A2A2A",
-                  color: "#F5F5F5",
-                }}
+                style={{ backgroundColor: "#0F0F0F", borderColor: "#2A2A2A", color: "#F5F5F5" }}
               />
               {!isLogin && (
-                <p className="text-xs" style={{ color: "#888888" }}>
-                  Must be at least 8 characters
-                </p>
+                <p className="text-xs" style={{ color: "#888888" }}>Must be at least 8 characters</p>
               )}
             </div>
 
-            {/* Error Message */}
             {error && (
               <div
                 className="rounded-md px-3 py-2 text-sm"
@@ -145,14 +103,11 @@ export function AuthForm({
           </CardContent>
 
           <CardFooter className="flex flex-col gap-4">
-            {/* Submit Button */}
             <Button
               type="submit"
               className="w-full text-white"
               disabled={isLoading}
-              style={{
-                backgroundColor: "#E1306C",
-              }}
+              style={{ backgroundColor: "#E1306C" }}
             >
               {isLoading ? (
                 <>
@@ -164,7 +119,6 @@ export function AuthForm({
               )}
             </Button>
 
-            {/* Toggle Mode Link */}
             <p className="text-center text-sm" style={{ color: "#888888" }}>
               {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
               <button

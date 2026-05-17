@@ -1,21 +1,19 @@
+"use client"
 import { useState, useEffect, useCallback } from "react"
-import { CalendoNavbar } from "../components/Navbar"
-import {
-  CalendoCalendar,
-  type Post,
-  type Platform,
-  type PostStatus,
-} from "../components/CalendarGrid"
-import { CalendarMobile, type MobilePost } from "../components/CalendarMobile"
-import { PlatformFilter } from "../components/PlatformFilter"
-import { PostModal, type PostData } from "../components/PostModal"
-import { ExportButton } from "../components/ExportButton"
-import { FeedbackButton } from "../components/FeedbackButton"
-import { LoadingSkeleton, EmptyState } from "../components/EmptyState"
-import { ErrorToast } from "../components/ErrorToast"
-import { useMediaQuery } from "../hooks/useMediaQuery"
-import { getPosts, createPost, updatePost, deletePost, exportCSV } from "../services/posts"
-import { AnalyticsSummary } from "../components/AnalyticsSummary"
+import { useRouter } from "next/navigation"
+import { CalendoNavbar } from "@/components/Navbar"
+import { CalendoCalendar, type Post, type Platform, type PostStatus } from "@/components/CalendarGrid"
+import { CalendarMobile, type MobilePost } from "@/components/CalendarMobile"
+import { PlatformFilter } from "@/components/PlatformFilter"
+import { PostModal, type PostData } from "@/components/PostModal"
+import { ExportButton } from "@/components/ExportButton"
+import { FeedbackButton } from "@/components/FeedbackButton"
+import { LoadingSkeleton, EmptyState } from "@/components/EmptyState"
+import { ErrorToast } from "@/components/ErrorToast"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
+import { getPosts, createPost, updatePost, deletePost, exportCSV } from "@/services/posts"
+import { AnalyticsSummary } from "@/components/AnalyticsSummary"
+import { ProtectedRoute } from "@/components/ProtectedRoute"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
 
@@ -70,7 +68,8 @@ function getMonthStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 }
 
-export function DashboardPage() {
+function DashboardContent() {
+  const router = useRouter()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [posts, setPosts] = useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -82,7 +81,7 @@ export function DashboardPage() {
   const [selectedPost, setSelectedPost] = useState<PostData | undefined>()
 
   const isMobile = useMediaQuery("(max-width: 767px)")
-  const userEmail = localStorage.getItem("email") || ""
+  const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true)
@@ -125,9 +124,8 @@ export function DashboardPage() {
     setModalOpen(true)
   }
 
-  const toLocalDateString = (date: Date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-  }
+  const toLocalDateString = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 
   const handleSave = async (postData: PostData) => {
     try {
@@ -163,18 +161,14 @@ export function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("email")
-    window.location.href = "/login"
+    router.replace("/login")
   }
 
-  const handleToday = () => {
-    setCurrentMonth(new Date())
-  }
+  const handleToday = () => setCurrentMonth(new Date())
 
   const handlePlatformToggle = (platform: Platform) => {
     setActivePlatforms((prev) =>
-      prev.includes(platform)
-        ? prev.filter((p) => p !== platform)
-        : [...prev, platform]
+      prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
     )
   }
 
@@ -203,8 +197,7 @@ export function DashboardPage() {
     currentMonth.getMonth() === today.getMonth()
 
   const todayPosts = posts.filter((p) => isSameDay(p.date, today))
-  const allTodayPublished =
-    todayPosts.length > 0 && todayPosts.every((p) => p.status === "published")
+  const allTodayPublished = todayPosts.length > 0 && todayPosts.every((p) => p.status === "published")
   const todayPlatforms = [...new Set(todayPosts.map((p) => p.platform))]
 
   return (
@@ -217,7 +210,6 @@ export function DashboardPage() {
       />
 
       <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
-        {/* Daily Summary Banner — only visible when viewing the current month */}
         {!isLoading && isCurrentMonth && (
           <div
             className="mb-4 rounded-lg border-l-4 px-4 py-3 text-sm"
@@ -231,7 +223,7 @@ export function DashboardPage() {
             }}
           >
             {todayPosts.length === 0 ? (
-              "Nothing scheduled for today. Click today’s date to add a post."
+              "Nothing scheduled for today. Click today's date to add a post."
             ) : allTodayPublished ? (
               `All done for today! ${todayPosts.length} post${todayPosts.length !== 1 ? "s" : ""} published ✓`
             ) : (
@@ -242,10 +234,7 @@ export function DashboardPage() {
                 {todayPlatforms.map((platform, i) => (
                   <span key={platform} className="inline-flex items-center gap-1">
                     {i > 0 && <span style={{ color: "#888888" }}>·</span>}
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{ backgroundColor: PLATFORM_COLORS[platform] }}
-                    />
+                    <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
                     <span>{PLATFORM_LABELS[platform]}</span>
                   </span>
                 ))}
@@ -255,10 +244,7 @@ export function DashboardPage() {
         )}
 
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <PlatformFilter
-            activePlatforms={activePlatforms}
-            onToggle={handlePlatformToggle}
-          />
+          <PlatformFilter activePlatforms={activePlatforms} onToggle={handlePlatformToggle} />
           <ExportButton onExport={handleExport} />
         </div>
 
@@ -310,5 +296,13 @@ export function DashboardPage() {
 
       {error && <ErrorToast message={error} onClose={() => setError(null)} />}
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   )
 }

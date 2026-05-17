@@ -1,3 +1,4 @@
+"use client"
 interface ExportButtonProps {
   onExport: () => void
 }
@@ -9,12 +10,7 @@ export function ExportButton({ onExport }: ExportButtonProps) {
       className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
       style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
     >
-      <svg
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

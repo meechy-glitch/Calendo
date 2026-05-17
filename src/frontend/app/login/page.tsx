@@ -1,10 +1,11 @@
+"use client"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { AuthForm } from "../components/AuthForm"
-import { registerApi, loginApi } from "../services/auth"
+import { useRouter } from "next/navigation"
+import { AuthForm } from "@/components/AuthForm"
+import { loginApi } from "@/services/auth"
 
-export function RegisterPage() {
-  const navigate = useNavigate()
+export default function LoginPage() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
@@ -12,13 +13,12 @@ export function RegisterPage() {
     setIsLoading(true)
     setError(undefined)
     try {
-      await registerApi(email, password)
       const data = await loginApi(email, password)
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("email", email)
-      navigate("/dashboard")
+      router.push("/dashboard")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed")
+      setError(err instanceof Error ? err.message : "Login failed")
     } finally {
       setIsLoading(false)
     }
@@ -26,9 +26,9 @@ export function RegisterPage() {
 
   return (
     <AuthForm
-      mode="register"
+      mode="login"
       onSubmit={handleSubmit}
-      onToggleMode={() => navigate("/login")}
+      onToggleMode={() => router.push("/register")}
       isLoading={isLoading}
       error={error}
     />

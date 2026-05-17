@@ -1,6 +1,6 @@
+"use client"
 import { cn } from "@/lib/utils"
 
-// Platform configuration
 const PLATFORMS = [
   { key: "instagram", name: "Instagram", color: "#833AB4" },
   { key: "x", name: "X", color: "#888888" },
@@ -20,17 +20,13 @@ export function PlatformFilter({ activePlatforms, onToggle }: PlatformFilterProp
     <div className="flex flex-wrap gap-2">
       {PLATFORMS.map((platform) => {
         const isActive = activePlatforms.includes(platform.key)
-        
         return (
           <button
             key={platform.key}
             onClick={() => onToggle(platform.key)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200",
-              "text-sm font-medium",
-              isActive
-                ? "bg-[#1A1A1A] text-[#F5F5F5]"
-                : "bg-[#1A1A1A]/50 text-[#888888]"
+              "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium",
+              isActive ? "bg-[#1A1A1A] text-[#F5F5F5]" : "bg-[#1A1A1A]/50 text-[#888888]"
             )}
             style={{
               borderWidth: "2px",
@@ -39,10 +35,7 @@ export function PlatformFilter({ activePlatforms, onToggle }: PlatformFilterProp
             }}
           >
             <span
-              className={cn(
-                "w-2.5 h-2.5 rounded-full transition-opacity duration-200",
-                isActive ? "opacity-100" : "opacity-40"
-              )}
+              className={cn("w-2.5 h-2.5 rounded-full transition-opacity duration-200", isActive ? "opacity-100" : "opacity-40")}
               style={{ backgroundColor: platform.color }}
             />
             <span>{platform.name}</span>

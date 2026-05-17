@@ -22,13 +22,9 @@ services:
 
   - type: web
     name: calendo-frontend
-    env: static
+    env: node
     buildCommand: cd src/frontend && npm install && npm run build
-    staticPublishPath: src/frontend/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    startCommand: cd src/frontend && npm start
 
 databases:
   - name: calendo-db
