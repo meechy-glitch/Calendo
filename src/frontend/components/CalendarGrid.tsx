@@ -91,10 +91,10 @@ function PostChip({ post, onClick }: { post: Post; onClick: (post: Post) => void
   }
 
   return (
-    <button
+    <div
       onClick={(e) => { e.stopPropagation(); onClick(post) }}
       className={cn(
-        "flex w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-left text-xs font-medium text-white transition-opacity hover:opacity-80",
+        "flex w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-left text-xs font-medium text-white transition-opacity hover:opacity-80 cursor-pointer",
         status === "draft" && "bg-transparent"
       )}
       style={getChipStyles()}
@@ -104,7 +104,7 @@ function PostChip({ post, onClick }: { post: Post; onClick: (post: Post) => void
       <span className="truncate">
         {post.title}{post.scheduledTime ? ` · ${formatTime12h(post.scheduledTime)}` : ""}
       </span>
-    </button>
+    </div>
   )
 }
 
