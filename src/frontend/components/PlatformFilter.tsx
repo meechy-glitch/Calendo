@@ -13,11 +13,24 @@ export type Platform = (typeof PLATFORMS)[number]["key"]
 interface PlatformFilterProps {
   activePlatforms: Platform[]
   onToggle: (platform: Platform) => void
+  onSelectAll: () => void
 }
 
-export function PlatformFilter({ activePlatforms, onToggle }: PlatformFilterProps) {
+export function PlatformFilter({ activePlatforms, onToggle, onSelectAll }: PlatformFilterProps) {
+  const allActive = PLATFORMS.every((p) => activePlatforms.includes(p.key))
+
   return (
     <div className="flex flex-wrap gap-2">
+      <button
+        onClick={onSelectAll}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all duration-200 text-xs font-medium",
+          allActive ? "bg-[#1A1A1A] text-[#F5F5F5]" : "bg-[#1A1A1A]/50 text-[#888888]"
+        )}
+        style={{ borderColor: allActive ? "#E1306C" : "#2A2A2A" }}
+      >
+        All
+      </button>
       {PLATFORMS.map((platform) => {
         const isActive = activePlatforms.includes(platform.key)
         return (

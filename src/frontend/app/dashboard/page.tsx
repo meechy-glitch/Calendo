@@ -9,7 +9,7 @@ import { PostModal, type PostData } from "@/components/PostModal"
 import { ExportButton } from "@/components/ExportButton"
 import { FeedbackButton } from "@/components/FeedbackButton"
 import { LoadingSkeleton, EmptyState } from "@/components/EmptyState"
-import { ErrorToast } from "@/components/ErrorToast"
+import { Toast } from "@/components/Toast"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { getPosts, createPost, updatePost, deletePost, exportCSV } from "@/services/posts"
 import { AnalyticsSummary } from "@/components/AnalyticsSummary"
@@ -68,12 +68,16 @@ function getMonthStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 }
 
+function toLocalDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
 function DashboardContent() {
   const router = useRouter()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [posts, setPosts] = useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
   const [activePlatforms, setActivePlatforms] = useState<Platform[]>(ALL_PLATFORMS)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<"create" | "edit">("create")
@@ -83,6 +87,12 @@ function DashboardContent() {
   const isMobile = useMediaQuery("(max-width: 767px)")
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
 
+  const showToast = useCallback((message: string, type: "success" | "error") => {
+    setToast({ message, type })
+  }, [])
+
+  const hideToast = useCallback(() => setToast(null), [])
+
   const fetchPosts = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -90,11 +100,11 @@ function DashboardContent() {
       const data = await getPosts(month)
       setPosts((data || []).map(toCalendarPost))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load posts")
+      showToast(err instanceof Error ? err.message : "Failed to load posts", "error")
     } finally {
       setIsLoading(false)
     }
-  }, [currentMonth])
+  }, [currentMonth, showToast])
 
   useEffect(() => {
     fetchPosts()
@@ -124,37 +134,70 @@ function DashboardContent() {
     setModalOpen(true)
   }
 
-  const toLocalDateString = (date: Date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-
   const handleSave = async (postData: PostData) => {
-    try {
-      const body = {
+    const body = {
+      title: postData.title,
+      caption: postData.caption,
+      platform: postData.platform,
+      scheduled_date: toLocalDateString(postData.scheduledDate),
+      status: postData.status,
+      scheduled_time: postData.scheduledTime || null,
+      notes: postData.notes || null,
+    }
+
+    if (modalMode === "create") {
+      const tempId = `temp-${Date.now()}`
+      const tempRaw: ApiPost = {
+        id: 0,
         title: postData.title,
-        caption: postData.caption,
+        caption: postData.caption || null,
         platform: postData.platform,
         scheduled_date: toLocalDateString(postData.scheduledDate),
         status: postData.status,
         scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
       }
-      if (modalMode === "create") {
-        await createPost(body)
-      } else if (postData.id) {
-        await updatePost(postData.id, body)
+      setPosts((prev) => [...prev, { ...toCalendarPost(tempRaw), id: tempId }])
+      try {
+        const created: ApiPost = await createPost(body)
+        setPosts((prev) => prev.map((p) => (p.id === tempId ? toCalendarPost(created) : p)))
+        showToast("Post scheduled ✓", "success")
+      } catch (err: unknown) {
+        setPosts((prev) => prev.filter((p) => p.id !== tempId))
+        showToast(err instanceof Error ? err.message : "Failed to save post", "error")
       }
-      await fetchPosts()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save post")
+    } else if (postData.id) {
+      const originalPost = posts.find((p) => p.id === postData.id)
+      const tempRaw: ApiPost = {
+        id: parseInt(postData.id),
+        title: postData.title,
+        caption: postData.caption || null,
+        platform: postData.platform,
+        scheduled_date: toLocalDateString(postData.scheduledDate),
+        status: postData.status,
+        scheduled_time: postData.scheduledTime || null,
+        notes: postData.notes || null,
+      }
+      setPosts((prev) => prev.map((p) => (p.id === postData.id ? toCalendarPost(tempRaw) : p)))
+      try {
+        await updatePost(postData.id, body)
+        showToast("Post updated ✓", "success")
+      } catch (err: unknown) {
+        if (originalPost) setPosts((prev) => prev.map((p) => (p.id === postData.id ? originalPost : p)))
+        showToast(err instanceof Error ? err.message : "Failed to save post", "error")
+      }
     }
   }
 
   const handleDelete = async (postId: string) => {
+    const originalPost = posts.find((p) => p.id === postId)
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
     try {
       await deletePost(postId)
-      await fetchPosts()
+      showToast("Post deleted", "success")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to delete post")
+      if (originalPost) setPosts((prev) => [...prev, originalPost])
+      showToast(err instanceof Error ? err.message : "Failed to delete post", "error")
     }
   }
 
@@ -173,11 +216,16 @@ function DashboardContent() {
   }
 
   const handleMarkPublished = async (post: MobilePost) => {
+    const originalPost = posts.find((p) => p.id === post.id)
+    setPosts((prev) =>
+      prev.map((p) => (p.id === post.id ? { ...p, status: "published" as PostStatus } : p))
+    )
     try {
       await updatePost(post.id, { status: "published" })
-      await fetchPosts()
+      showToast("Marked as published ✓", "success")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update status")
+      if (originalPost) setPosts((prev) => prev.map((p) => (p.id === post.id ? originalPost : p)))
+      showToast(err instanceof Error ? err.message : "Failed to update status", "error")
     }
   }
 
@@ -185,7 +233,7 @@ function DashboardContent() {
     try {
       await exportCSV(getMonthStr(currentMonth))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Export failed")
+      showToast(err instanceof Error ? err.message : "Export failed", "error")
     }
   }
 
@@ -244,7 +292,11 @@ function DashboardContent() {
         )}
 
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <PlatformFilter activePlatforms={activePlatforms} onToggle={handlePlatformToggle} />
+          <PlatformFilter
+            activePlatforms={activePlatforms}
+            onToggle={handlePlatformToggle}
+            onSelectAll={() => setActivePlatforms(ALL_PLATFORMS)}
+          />
           <ExportButton onExport={handleExport} />
         </div>
 
@@ -294,7 +346,7 @@ function DashboardContent() {
 
       <FeedbackButton onSubmit={() => {}} />
 
-      {error && <ErrorToast message={error} onClose={() => setError(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   )
 }

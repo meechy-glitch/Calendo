@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
 export type PostStatus = "draft" | "scheduled" | "published"
@@ -72,6 +73,7 @@ export interface PostModalProps {
 }
 
 export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete, onClose }: PostModalProps) {
+  const isMobile = useMediaQuery("(max-width: 767px)")
   const [title, setTitle] = React.useState("")
   const [caption, setCaption] = React.useState("")
   const [platform, setPlatform] = React.useState<Platform>("instagram")
@@ -197,27 +199,40 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
             <Label style={{ color: "#F5F5F5" }}>
               Scheduled Date <span style={{ color: "#E1306C" }}>*</span>
             </Label>
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal border-[#2A2A2A]", !date && "text-muted-foreground")}
-                  style={{ backgroundColor: "#0F0F0F", color: date ? "#F5F5F5" : "#888888" }}
-                >
-                  <CalendarIcon className="mr-2 size-4" style={{ color: "#888888" }} />
-                  {date ? format(date, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }} align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(selectedDate) => { setDate(selectedDate); setCalendarOpen(false) }}
-                  initialFocus
-                  className="[&_button]:text-[#F5F5F5] [&_.rdp-day_button:hover]:bg-[#2A2A2A] [&_.rdp-day_button[data-selected]]:bg-[#E1306C]"
-                />
-              </PopoverContent>
-            </Popover>
+            {isMobile ? (
+              <input
+                type="date"
+                value={date ? format(date, "yyyy-MM-dd") : ""}
+                onChange={(e) => {
+                  if (e.target.value) setDate(new Date(e.target.value + "T00:00:00"))
+                  else setDate(undefined)
+                }}
+                className="w-full rounded-md border border-[#2A2A2A] px-3 py-2 text-sm"
+                style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5", colorScheme: "dark" }}
+              />
+            ) : (
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal border-[#2A2A2A]", !date && "text-muted-foreground")}
+                    style={{ backgroundColor: "#0F0F0F", color: date ? "#F5F5F5" : "#888888" }}
+                  >
+                    <CalendarIcon className="mr-2 size-4" style={{ color: "#888888" }} />
+                    {date ? format(date, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }} align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(selectedDate) => { setDate(selectedDate); setCalendarOpen(false) }}
+                    initialFocus
+                    className="[&_button]:text-[#F5F5F5] [&_.rdp-day_button:hover]:bg-[#2A2A2A] [&_.rdp-day_button[data-selected]]:bg-[#E1306C]"
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">

@@ -33,7 +33,12 @@ export function CalendoNavbar({ userEmail, currentMonth, onLogout, onTodayClick 
       </div>
 
       <div className="hidden flex-1 justify-center sm:flex">
-        <span className="text-sm font-medium" style={{ color: "#F5F5F5" }}>{monthYearDisplay}</span>
+        <span
+          className="rounded-full border px-4 py-1 text-sm font-medium"
+          style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", color: "#F5F5F5" }}
+        >
+          {monthYearDisplay}
+        </span>
       </div>
 
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
