@@ -8,26 +8,12 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: calendo-db
-          property: connectionString
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: ENVIRONMENT
         value: production
       - key: FRONTEND_URL
-        value: https://calendo-frontend.onrender.com
+        value: https://your-app.vercel.app
       - key: JWT_EXPIRE_DAYS
         value: 7
-
-  - type: web
-    name: calendo-frontend
-    env: node
-    buildCommand: cd src/frontend && npm install && npm run build
-    startCommand: cd src/frontend && npm start
-
-databases:
-  - name: calendo-db
-    databaseName: calendo
-    user: calendo
-    plan: free
