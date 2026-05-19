@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, Info } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -74,6 +74,7 @@ export interface PostModalProps {
 
 export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete, onClose }: PostModalProps) {
   const isMobile = useMediaQuery("(max-width: 767px)")
+  const isPublished = mode === "edit" && post?.status === "published"
   const [title, setTitle] = React.useState("")
   const [caption, setCaption] = React.useState("")
   const [platform, setPlatform] = React.useState<Platform>("instagram")
@@ -134,11 +135,22 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
       <DialogContent className="sm:max-w-[480px] border-[#2A2A2A] flex flex-col max-h-[90dvh]" style={{ backgroundColor: "#1A1A1A" }}>
         <DialogHeader className="flex-shrink-0">
           <DialogTitle style={{ color: "#F5F5F5" }}>
-            {mode === "create" ? "Create Post" : "Edit Post"}
+            {mode === "create" ? "Create Post" : isPublished ? "View Post" : "Edit Post"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+          {isPublished && (
+            <div
+              className="flex items-center gap-2 rounded-md border px-3 py-2"
+              style={{ borderColor: "#2A2A2A", backgroundColor: "#161616" }}
+            >
+              <Info className="h-4 w-4 shrink-0" style={{ color: "#888888" }} />
+              <p className="text-sm" style={{ color: "#888888" }}>
+                This post has been published and cannot be edited.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor="title" style={{ color: "#F5F5F5" }}>
               Title <span style={{ color: "#E1306C" }}>*</span>
@@ -148,7 +160,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter post title"
-              className="border-[#2A2A2A] focus-visible:ring-[#E1306C]/50"
+              disabled={isPublished}
+              className="border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
           </div>
@@ -166,7 +179,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               onChange={(e) => setCaption(e.target.value.slice(0, MAX_CAPTION_LENGTH))}
               placeholder="Write your caption..."
               rows={4}
-              className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50"
+              disabled={isPublished}
+              className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
           </div>
@@ -174,7 +188,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           <div className="flex flex-col gap-2">
             <Label style={{ color: "#F5F5F5" }}>Platform</Label>
             <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-              <SelectTrigger className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
+              <SelectTrigger disabled={isPublished} className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
@@ -207,7 +221,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
                   if (e.target.value) setDate(new Date(e.target.value + "T00:00:00"))
                   else setDate(undefined)
                 }}
-                className="w-full rounded-md border border-[#2A2A2A] px-3 py-2 text-sm"
+                disabled={isPublished}
+                className="w-full rounded-md border border-[#2A2A2A] px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5", colorScheme: "dark" }}
               />
             ) : (
@@ -215,7 +230,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn("w-full justify-start text-left font-normal border-[#2A2A2A]", !date && "text-muted-foreground")}
+                    disabled={isPublished}
+                    className={cn("w-full justify-start text-left font-normal border-[#2A2A2A] disabled:opacity-60 disabled:cursor-not-allowed", !date && "text-muted-foreground")}
                     style={{ backgroundColor: "#0F0F0F", color: date ? "#F5F5F5" : "#888888" }}
                   >
                     <CalendarIcon className="mr-2 size-4" style={{ color: "#888888" }} />
@@ -238,7 +254,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           <div className="flex flex-col gap-2">
             <Label style={{ color: "#F5F5F5" }}>Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as PostStatus)}>
-              <SelectTrigger className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
+              <SelectTrigger disabled={isPublished} className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }}>
@@ -254,7 +270,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           <div className="flex flex-col gap-2">
             <Label style={{ color: "#F5F5F5" }}>Scheduled Time</Label>
             <Select value={scheduledTime || "__none__"} onValueChange={(v) => setScheduledTime(v === "__none__" ? "" : v)}>
-              <SelectTrigger className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50" style={{ backgroundColor: "#0F0F0F", color: scheduledTime ? "#F5F5F5" : "#888888" }}>
+              <SelectTrigger disabled={isPublished} className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed" style={{ backgroundColor: "#0F0F0F", color: scheduledTime ? "#F5F5F5" : "#888888" }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-[#2A2A2A] max-h-60" style={{ backgroundColor: "#1A1A1A" }}>
@@ -280,7 +296,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               onChange={(e) => setNotes(e.target.value.slice(0, MAX_NOTES_LENGTH))}
               placeholder="e.g. get client approval, use product shot 3, needs graphic from design team"
               rows={3}
-              className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50"
+              disabled={isPublished}
+              className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
           </div>
@@ -297,23 +314,25 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               Delete
             </Button>
           )}
-          <div className={cn("flex gap-2", mode === "create" && "ml-auto")}>
+          <div className={cn("flex gap-2", (mode === "create" || isPublished) && "ml-auto")}>
             <Button
               variant="outline"
               onClick={onClose}
               className="border-[#2A2A2A] hover:bg-[#2A2A2A]"
               style={{ backgroundColor: "transparent", color: "#F5F5F5" }}
             >
-              Cancel
+              {isPublished ? "Close" : "Cancel"}
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!isValid}
-              className="hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
-            >
-              Save
-            </Button>
+            {!isPublished && (
+              <Button
+                onClick={handleSave}
+                disabled={!isValid}
+                className="hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
+              >
+                Save
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

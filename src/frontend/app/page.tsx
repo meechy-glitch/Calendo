@@ -4,22 +4,11 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Calendar, Smartphone, Users } from "lucide-react"
 
-const features = [
-  {
-    icon: Calendar,
-    title: "Multi-Platform",
-    description: "Plan Instagram, X, TikTok and LinkedIn in one place",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile First",
-    description: "Manage your content calendar from anywhere",
-  },
-  {
-    icon: Users,
-    title: "Team Ready",
-    description: "Built for agencies, brands and content teams",
-  },
+const platforms = [
+  { name: "Instagram", color: "#833AB4" },
+  { name: "X", color: "#888888" },
+  { name: "TikTok", color: "#FE2C55" },
+  { name: "LinkedIn", color: "#0A66C2" },
 ]
 
 export default function LandingPage() {
@@ -38,60 +27,153 @@ export default function LandingPage() {
   if (!ready) return null
 
   return (
-    <div style={{ backgroundColor: "#0F0F0F", minHeight: "100vh", color: "#F5F5F5" }}>
-      {/* Hero */}
-      <section className="flex flex-col items-center justify-center px-4 py-28 text-center">
-        <h1 className="mb-4 text-6xl font-bold tracking-tight" style={{ color: "#E1306C" }}>
-          Calendo
-        </h1>
-        <p className="mb-10 max-w-md text-lg leading-relaxed" style={{ color: "#888888" }}>
-          The content calendar built for creative teams
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link
-            href="/register"
-            className="rounded-lg px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
-          >
-            Get Started
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-lg border px-6 py-3 text-sm font-semibold transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
-            style={{ borderColor: "#2A2A2A", color: "#F5F5F5" }}
-          >
-            Sign In
-          </Link>
-        </div>
-      </section>
+    <>
+      <style>{`
+        .lp-cta-primary {
+          display: flex; align-items: center; justify-content: center;
+          padding: 14px 28px; background: #E1306C; color: #F5F5F5;
+          border-radius: 10px; font-size: 15px; font-weight: 700;
+          text-decoration: none; letter-spacing: -0.01em; transition: opacity 0.15s;
+        }
+        .lp-cta-primary:hover { opacity: 0.82; }
+        .lp-signin-link {
+          color: #E1306C; text-decoration: none; transition: text-decoration 0.1s;
+        }
+        .lp-signin-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+        .lp-pill {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 4px 11px; border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.025);
+          font-size: 11px; font-weight: 500; color: #707070; letter-spacing: 0.01em;
+          white-space: nowrap; flex-shrink: 0;
+        }
+        .lp-pills-row::-webkit-scrollbar { display: none; }
+      `}</style>
 
-      {/* Features */}
-      <section className="mx-auto max-w-4xl px-4 pb-28">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {features.map((feature) => (
+      <div className="px-5 md:px-0 overflow-x-hidden" style={{ backgroundColor: "#0F0F0F", minHeight: "100vh", color: "#F5F5F5" }}>
+        {/* Hero */}
+        <section className="flex flex-col items-center px-6 text-center pt-12 pb-8 md:pt-[72px] md:pb-[52px]">
+          <h1
+            className="text-5xl md:text-8xl mb-4"
+            style={{
+              fontFamily: "var(--font-syne), sans-serif",
+              fontWeight: 800,
+              letterSpacing: "-0.045em",
+              color: "#E1306C",
+              lineHeight: 1,
+            }}
+          >
+            Calendo
+          </h1>
+
+          <p
+            className="mb-4 md:mb-5"
+            style={{
+              fontSize: "clamp(16px, 2.8vw, 19px)",
+              color: "#AAAAAA",
+              fontWeight: 300,
+              lineHeight: 1.5,
+              maxWidth: "340px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Stop planning in DMs.<br />Start shipping content.
+          </p>
+
+          {/* Platform pills — single row, scrollable on mobile */}
+          <div className="relative w-full mb-4 md:mb-7">
             <div
-              key={feature.title}
-              className="rounded-xl border p-6"
-              style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
+              className="lp-pills-row flex flex-nowrap gap-2 overflow-x-auto md:justify-center"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
             >
-              <feature.icon className="mb-4 h-6 w-6" style={{ color: "#E1306C" }} />
-              <h3 className="mb-2 font-semibold" style={{ color: "#F5F5F5" }}>
-                {feature.title}
+              {platforms.map((p) => (
+                <span key={p.name} className="lp-pill">
+                  <span
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      backgroundColor: p.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  {p.name}
+                </span>
+              ))}
+            </div>
+            {/* Right fade hint — mobile only */}
+            <div
+              className="md:hidden absolute right-0 top-0 bottom-0 w-10 pointer-events-none"
+              style={{ background: "linear-gradient(to right, transparent, #0F0F0F)" }}
+            />
+          </div>
+
+          {/* CTAs */}
+          <div className="flex flex-col items-center gap-3 w-full md:w-auto">
+            <Link href="/register" className="lp-cta-primary w-full md:w-auto">
+              Get Started
+            </Link>
+            <p style={{ fontSize: "13px", color: "#666666", margin: 0 }}>
+              Already have an account?{" "}
+              <Link href="/login" className="lp-signin-link">Sign in</Link>
+            </p>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section style={{ maxWidth: "900px", margin: "0 auto", padding: "0 20px 80px" }}>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {/* Primary card — full width on mobile, 1/3 on desktop */}
+            <div
+              className="col-span-2 md:col-span-1"
+              style={{
+                borderRadius: "14px",
+                border: "1px solid #2A1520",
+                borderLeft: "2px solid #E1306C",
+                background: "#130D10",
+                padding: "28px 24px",
+              }}
+            >
+              <Calendar size={20} style={{ color: "#E1306C", marginBottom: "14px", display: "block" }} />
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#F0F0F0", margin: "0 0 7px", letterSpacing: "-0.01em" }}>
+                Multi-Platform
               </h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#888888" }}>
-                {feature.description}
+              <p style={{ fontSize: "13px", lineHeight: 1.65, color: "#565656", margin: 0 }}>
+                Instagram, X, TikTok, and LinkedIn. One calendar.
               </p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8 text-center" style={{ borderColor: "#2A2A2A" }}>
-        <p className="text-sm" style={{ color: "#555555" }}>
-          Built by Credible Studios
-        </p>
-      </footer>
-    </div>
+            <div style={{ borderRadius: "14px", border: "1px solid #242424", background: "#141414", padding: "28px 24px" }}>
+              <Smartphone size={20} style={{ color: "#555555", marginBottom: "14px", display: "block" }} />
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#F0F0F0", margin: "0 0 7px", letterSpacing: "-0.01em" }}>
+                Mobile First
+              </h3>
+              <p style={{ fontSize: "13px", lineHeight: 1.65, color: "#565656", margin: 0 }}>
+                Plan and track content from your phone.
+              </p>
+            </div>
+
+            <div style={{ borderRadius: "14px", border: "1px solid #242424", background: "#141414", padding: "28px 24px" }}>
+              <Users size={20} style={{ color: "#555555", marginBottom: "14px", display: "block" }} />
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#F0F0F0", margin: "0 0 7px", letterSpacing: "-0.01em" }}>
+                Team Ready
+              </h3>
+              <p style={{ fontSize: "13px", lineHeight: 1.65, color: "#565656", margin: 0 }}>
+                Built for agencies, brands, and content teams.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer style={{ borderTop: "1px solid #181818", padding: "24px", textAlign: "center" }}>
+          <p style={{ fontSize: "11px", color: "#3C3C3C", margin: 0, letterSpacing: "0.03em" }}>
+            Made for brands that actually post.{" "}
+            <span style={{ color: "#484848" }}>Built by Credible Studios.</span>
+          </p>
+        </footer>
+      </div>
+    </>
   )
 }

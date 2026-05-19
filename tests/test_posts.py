@@ -125,6 +125,17 @@ def test_post_wrong_user_delete_forbidden(client, auth_headers):
     assert r.status_code in [403, 404]
 
 
+def test_update_published_post_blocked(client, auth_headers):
+    create_r = client.post("/posts", json=POST_DATA, headers=auth_headers)
+    post_id = create_r.json()["id"]
+    client.put(f"/posts/{post_id}", json={"status": "published"}, headers=auth_headers)
+    r = client.put(
+        f"/posts/{post_id}", json={"title": "Attempt to Edit"}, headers=auth_headers
+    )
+    assert r.status_code == 403
+    assert "cannot be edited" in r.json()["detail"]
+
+
 def test_csv_export(client, auth_headers):
     client.post("/posts", json=POST_DATA, headers=auth_headers)
     r = client.get("/posts/export/csv?month=2025-05", headers=auth_headers)

@@ -20,7 +20,7 @@ export function PlatformFilter({ activePlatforms, onToggle, onSelectAll }: Platf
   const allActive = PLATFORMS.every((p) => activePlatforms.includes(p.key))
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="scrollbar-hide flex flex-nowrap gap-2 overflow-x-auto">
       <button
         onClick={onSelectAll}
         className={cn(

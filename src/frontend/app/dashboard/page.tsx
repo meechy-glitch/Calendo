@@ -255,6 +255,7 @@ function DashboardContent() {
         currentMonth={currentMonth}
         onLogout={handleLogout}
         onTodayClick={handleToday}
+        onAddPost={() => handleDateClick(new Date())}
       />
 
       <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
@@ -306,14 +307,22 @@ function DashboardContent() {
           <>
             <AnalyticsSummary posts={filteredPosts} />
             {isMobile ? (
-              <CalendarMobile
-                posts={filteredPosts}
-                currentMonth={currentMonth}
-                onDateClick={handleDateClick}
-                onPostClick={handlePostClick}
-                onMonthChange={setCurrentMonth}
-                onMarkPublished={handleMarkPublished}
-              />
+              <>
+                <CalendarMobile
+                  posts={filteredPosts}
+                  currentMonth={currentMonth}
+                  onDateClick={handleDateClick}
+                  onPostClick={handlePostClick}
+                  onMonthChange={setCurrentMonth}
+                  onMarkPublished={handleMarkPublished}
+                />
+                <div
+                  className="mt-8 border-t pt-4 text-center"
+                  style={{ borderColor: "#1E1E1E" }}
+                >
+                  <FeedbackButton variant="link" onSubmit={() => {}} />
+                </div>
+              </>
             ) : (
               <>
                 <CalendoCalendar
@@ -344,7 +353,7 @@ function DashboardContent() {
         onClose={() => setModalOpen(false)}
       />
 
-      <FeedbackButton onSubmit={() => {}} />
+      {!isMobile && <FeedbackButton onSubmit={() => {}} />}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>

@@ -1,4 +1,5 @@
 "use client"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface CalendoNavbarProps {
@@ -6,9 +7,10 @@ interface CalendoNavbarProps {
   currentMonth: Date
   onLogout: () => void
   onTodayClick: () => void
+  onAddPost?: () => void
 }
 
-export function CalendoNavbar({ userEmail, currentMonth, onLogout, onTodayClick }: CalendoNavbarProps) {
+export function CalendoNavbar({ userEmail, currentMonth, onLogout, onTodayClick, onAddPost }: CalendoNavbarProps) {
   const monthYearDisplay = currentMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -41,7 +43,7 @@ export function CalendoNavbar({ userEmail, currentMonth, onLogout, onTodayClick 
         </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
         <span
           className="hidden max-w-[180px] truncate text-sm md:block"
           style={{ color: "#888888" }}
@@ -49,6 +51,16 @@ export function CalendoNavbar({ userEmail, currentMonth, onLogout, onTodayClick 
         >
           {userEmail}
         </span>
+        {onAddPost && (
+          <button
+            onClick={onAddPost}
+            className="flex h-8 w-8 items-center justify-center rounded-lg sm:hidden"
+            style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
+            aria-label="Add post"
+          >
+            <Plus size={16} />
+          </button>
+        )}
         <Button
           variant="outline"
           size="sm"

@@ -80,6 +80,11 @@ def update_post(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    existing = crud.get_post_by_id(db, post_id)
+    if not existing or existing.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if existing.status.value == "published":
+        raise HTTPException(status_code=403, detail="Published posts cannot be edited")
     result = crud.update_post(db, post_id, post_update, current_user.id)
     if result == "not_found":
         raise HTTPException(status_code=404, detail="Post not found")

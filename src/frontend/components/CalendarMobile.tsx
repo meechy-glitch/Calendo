@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { ChevronLeft, ChevronRight, Plus, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -244,12 +244,6 @@ export function CalendarMobile({
         )}
       </div>
 
-      <button
-        onClick={() => onDateClick(selectedDate)}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#E1306C] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-      >
-        <Plus className="h-6 w-6" /><span className="sr-only">Add post for selected date</span>
-      </button>
     </div>
   )
 }
