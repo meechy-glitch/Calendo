@@ -215,7 +215,7 @@ export default function LandingPage() {
               </div>
 
               {/* CTAs */}
-              <div className="flex flex-col items-center gap-3 w-full md:w-auto md:items-start">
+              <div className="flex flex-col items-center text-center gap-3 w-full md:w-auto md:items-start md:text-left">
                 <Link href="/register" className="lp-cta-primary w-full md:w-auto">
                   Get Started
                 </Link>
