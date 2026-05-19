@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { CalendarIcon, Info } from "lucide-react"
+import { CalendarIcon, Info, Lock } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -134,12 +134,14 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[480px] border-[#2A2A2A] flex flex-col max-h-[90dvh]" style={{ backgroundColor: "#1A1A1A" }}>
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle style={{ color: "#F5F5F5" }}>
-            {mode === "create" ? "Create Post" : isPublished ? "View Post" : "Edit Post"}
+          <DialogTitle className="flex items-center gap-2" style={{ color: "#F5F5F5" }}>
+            {mode === "create" ? "Create Post" : isPublished ? (
+              <>View Post <Lock className="h-4 w-4" style={{ color: "#888888" }} /></>
+            ) : "Edit Post"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 py-4 overflow-y-auto flex-1 min-h-0">
+        <div className={cn("flex flex-col gap-5 py-4 overflow-y-auto flex-1 min-h-0", isPublished && "opacity-60")}>
           {isPublished && (
             <div
               className="flex items-center gap-2 rounded-md border px-3 py-2"
