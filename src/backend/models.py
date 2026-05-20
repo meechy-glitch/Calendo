@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Enum
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from src.backend.database import Base
 
@@ -28,6 +28,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     posts = relationship("Post", back_populates="user")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
 
 
 class Post(Base):
@@ -46,3 +47,16 @@ class Post(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(64), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="password_reset_tokens")

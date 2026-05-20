@@ -86,6 +86,8 @@ function DashboardContent() {
 
   const isMobile = useMediaQuery("(max-width: 767px)")
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
+  const isDemo = userEmail === "demo@calendo.app"
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type })
@@ -135,10 +137,9 @@ function DashboardContent() {
   }
 
   const handleSave = async (postData: PostData) => {
-    const body = {
+    const baseBody = {
       title: postData.title,
       caption: postData.caption,
-      platform: postData.platform,
       scheduled_date: toLocalDateString(postData.scheduledDate),
       status: postData.status,
       scheduled_time: postData.scheduledTime || null,
@@ -146,6 +147,24 @@ function DashboardContent() {
     }
 
     if (modalMode === "create") {
+      const platforms = postData.platforms && postData.platforms.length > 0
+        ? postData.platforms
+        : [postData.platform]
+
+      if (platforms.length > 1) {
+        setIsLoading(true)
+        try {
+          await Promise.all(platforms.map((p) => createPost({ ...baseBody, platform: p })))
+          showToast(`${platforms.length} posts scheduled ✓`, "success")
+          await fetchPosts()
+        } catch (err: unknown) {
+          showToast(err instanceof Error ? err.message : "Failed to save posts", "error")
+          setIsLoading(false)
+        }
+        return
+      }
+
+      const body = { ...baseBody, platform: postData.platform }
       const tempId = `temp-${Date.now()}`
       const tempRaw: ApiPost = {
         id: 0,
@@ -167,6 +186,7 @@ function DashboardContent() {
         showToast(err instanceof Error ? err.message : "Failed to save post", "error")
       }
     } else if (postData.id) {
+      const body = { ...baseBody, platform: postData.platform }
       const originalPost = posts.find((p) => p.id === postData.id)
       const tempRaw: ApiPost = {
         id: parseInt(postData.id),
@@ -259,6 +279,29 @@ function DashboardContent() {
       />
 
       <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
+        {isDemo && !demoBannerDismissed && (
+          <div
+            className="mb-4 flex items-center justify-between rounded-md px-4 py-2.5 text-sm"
+            style={{ backgroundColor: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888888" }}
+          >
+            <span>
+              You&apos;re viewing a demo account.{" "}
+              <a href="/register" style={{ color: "#888888", textDecoration: "underline", textUnderlineOffset: "3px" }}>
+                Sign up
+              </a>
+              {" "}to save your own content.
+            </span>
+            <button
+              onClick={() => setDemoBannerDismissed(true)}
+              className="ml-4 flex-shrink-0 leading-none hover:text-[#F5F5F5]"
+              aria-label="Dismiss"
+              style={{ color: "#555555", fontSize: "18px" }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {!isLoading && isCurrentMonth && (
           <div
             className="mb-6 rounded-lg border-l-4 px-4 py-3 text-sm"

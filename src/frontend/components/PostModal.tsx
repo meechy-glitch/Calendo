@@ -23,6 +23,20 @@ const PLATFORM_COLORS = {
   linkedin: "#0A66C2",
 } as const
 
+const PLATFORM_CHAR_LIMITS: Record<Platform, number> = {
+  instagram: 2200,
+  x: 280,
+  tiktok: 2200,
+  linkedin: 3000,
+}
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  instagram: "Instagram",
+  x: "X",
+  tiktok: "TikTok",
+  linkedin: "LinkedIn",
+}
+
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "instagram", label: "Instagram" },
   { value: "x", label: "X" },
@@ -36,7 +50,6 @@ const STATUSES: { value: PostStatus; label: string }[] = [
   { value: "published", label: "Published" },
 ]
 
-const MAX_CAPTION_LENGTH = 2200
 const MAX_NOTES_LENGTH = 500
 
 const TIME_OPTIONS: { value: string; label: string }[] = [
@@ -56,6 +69,7 @@ export interface PostData {
   title: string
   caption: string
   platform: Platform
+  platforms?: Platform[]
   scheduledDate: Date
   status: PostStatus
   scheduledTime?: string
@@ -78,6 +92,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
   const [title, setTitle] = React.useState("")
   const [caption, setCaption] = React.useState("")
   const [platform, setPlatform] = React.useState<Platform>("instagram")
+  const [selectedPlatforms, setSelectedPlatforms] = React.useState<Platform[]>(["instagram"])
   const [date, setDate] = React.useState<Date | undefined>(undefined)
   const [status, setStatus] = React.useState<PostStatus>("draft")
   const [scheduledTime, setScheduledTime] = React.useState("")
@@ -90,6 +105,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setTitle(post.title)
         setCaption(post.caption || "")
         setPlatform(post.platform)
+        setSelectedPlatforms([post.platform])
         setDate(post.scheduledDate)
         setStatus(post.status)
         setScheduledTime(post.scheduledTime || "")
@@ -98,6 +114,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setTitle("")
         setCaption("")
         setPlatform("instagram")
+        setSelectedPlatforms(["instagram"])
         setDate(scheduledDate || undefined)
         setStatus("draft")
         setScheduledTime("")
@@ -106,18 +123,51 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
     }
   }, [isOpen, post, scheduledDate])
 
+  const effectiveLimit = React.useMemo(() => {
+    const platforms = mode === "create" ? selectedPlatforms : [platform]
+    if (platforms.length === 0) return PLATFORM_CHAR_LIMITS.instagram
+    return Math.min(...platforms.map((p) => PLATFORM_CHAR_LIMITS[p]))
+  }, [mode, selectedPlatforms, platform])
+
+  const captionOverLimit = caption.length > effectiveLimit
+
+  const togglePlatform = (p: Platform) => {
+    setSelectedPlatforms((prev) => {
+      if (prev.includes(p)) {
+        // Don't allow deselecting the last one
+        if (prev.length === 1) return prev
+        return prev.filter((x) => x !== p)
+      }
+      return [...prev, p]
+    })
+  }
+
   const handleSave = () => {
     if (!title.trim() || !date) return
-    onSave({
-      id: post?.id,
-      title: title.trim(),
-      caption: caption.trim(),
-      platform,
-      scheduledDate: date,
-      status,
-      scheduledTime: scheduledTime || undefined,
-      notes: notes.trim() || undefined,
-    })
+    if (mode === "create") {
+      onSave({
+        id: post?.id,
+        title: title.trim(),
+        caption: caption.trim(),
+        platform: selectedPlatforms[0],
+        platforms: selectedPlatforms,
+        scheduledDate: date,
+        status,
+        scheduledTime: scheduledTime || undefined,
+        notes: notes.trim() || undefined,
+      })
+    } else {
+      onSave({
+        id: post?.id,
+        title: title.trim(),
+        caption: caption.trim(),
+        platform,
+        scheduledDate: date,
+        status,
+        scheduledTime: scheduledTime || undefined,
+        notes: notes.trim() || undefined,
+      })
+    }
     onClose()
   }
 
@@ -129,6 +179,14 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
   }
 
   const isValid = title.trim().length > 0 && date !== undefined
+
+  const restrictivePlatform = React.useMemo(() => {
+    const platforms = mode === "create" ? selectedPlatforms : [platform]
+    if (platforms.length === 0) return null
+    return platforms.reduce((min, p) =>
+      PLATFORM_CHAR_LIMITS[p] < PLATFORM_CHAR_LIMITS[min] ? p : min
+    )
+  }, [mode, selectedPlatforms, platform])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -171,44 +229,89 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="caption" style={{ color: "#F5F5F5" }}>Caption</Label>
-              <span className="text-xs" style={{ color: caption.length > MAX_CAPTION_LENGTH ? "#E1306C" : "#888888" }}>
-                {caption.length}/{MAX_CAPTION_LENGTH}
+              <span className="text-xs" style={{ color: captionOverLimit ? "#E1306C" : "#888888" }}>
+                {caption.length}/{effectiveLimit}
               </span>
             </div>
             <Textarea
               id="caption"
               value={caption}
-              onChange={(e) => setCaption(e.target.value.slice(0, MAX_CAPTION_LENGTH))}
+              onChange={(e) => setCaption(e.target.value)}
               placeholder="Write your caption..."
               rows={4}
               disabled={isPublished}
               className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
+            {captionOverLimit && restrictivePlatform && (
+              <p className="text-xs" style={{ color: "#E1306C" }}>
+                Exceeds {PLATFORM_LABELS[restrictivePlatform]} character limit
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
             <Label style={{ color: "#F5F5F5" }}>Platform</Label>
-            <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-              <SelectTrigger disabled={isPublished} className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2.5 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
-                    {PLATFORMS.find((p) => p.value === platform)?.label}
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }}>
-                {PLATFORMS.map((p) => (
-                  <SelectItem key={p.value} value={p.value} className="focus:bg-[#2A2A2A]" style={{ color: "#F5F5F5" }}>
+            {mode === "create" ? (
+              <div className="flex flex-col gap-2">
+                {PLATFORMS.map((p) => {
+                  const checked = selectedPlatforms.includes(p.value)
+                  return (
+                    <label
+                      key={p.value}
+                      className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 transition-colors"
+                      style={{
+                        borderColor: checked ? PLATFORM_COLORS[p.value] : "#2A2A2A",
+                        backgroundColor: checked ? `${PLATFORM_COLORS[p.value]}14` : "#0F0F0F",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePlatform(p.value)}
+                        className="sr-only"
+                      />
+                      <span
+                        className="flex items-center justify-center w-4 h-4 rounded border flex-shrink-0"
+                        style={{
+                          borderColor: checked ? PLATFORM_COLORS[p.value] : "#555555",
+                          backgroundColor: checked ? PLATFORM_COLORS[p.value] : "transparent",
+                        }}
+                      >
+                        {checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="size-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: PLATFORM_COLORS[p.value] }} />
+                      <span className="text-sm" style={{ color: "#F5F5F5" }}>{p.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            ) : (
+              <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                <SelectTrigger disabled={isPublished} className="w-full border-[#2A2A2A] focus:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed" style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}>
+                  <SelectValue>
                     <div className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[p.value] }} />
-                      {p.label}
+                      <span className="size-2.5 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
+                      {PLATFORMS.find((p) => p.value === platform)?.label}
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="border-[#2A2A2A]" style={{ backgroundColor: "#1A1A1A" }}>
+                  {PLATFORMS.map((p) => (
+                    <SelectItem key={p.value} value={p.value} className="focus:bg-[#2A2A2A]" style={{ color: "#F5F5F5" }}>
+                      <div className="flex items-center gap-2">
+                        <span className="size-2.5 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[p.value] }} />
+                        {p.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">

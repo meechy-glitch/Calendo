@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Calendar, Smartphone, Users, PlusCircle, CheckCircle } from "lucide-react"
+import { demoApi } from "@/services/auth"
 
 const platforms = [
   { name: "Instagram", color: "#833AB4" },
@@ -129,6 +130,7 @@ function DashboardMockup() {
 export default function LandingPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [isDemoLoading, setIsDemoLoading] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -138,6 +140,18 @@ export default function LandingPage() {
       setReady(true)
     }
   }, [router])
+
+  const handleDemo = async () => {
+    setIsDemoLoading(true)
+    try {
+      const data = await demoApi()
+      localStorage.setItem("token", data.access_token)
+      localStorage.setItem("email", "demo@calendo.app")
+      router.push("/dashboard")
+    } catch {
+      setIsDemoLoading(false)
+    }
+  }
 
   if (!ready) return null
 
@@ -163,6 +177,16 @@ export default function LandingPage() {
         }
         .lp-pills-row { scrollbar-width: none; -ms-overflow-style: none; }
         .lp-pills-row::-webkit-scrollbar { display: none; }
+        .lp-cta-demo {
+          display: flex; align-items: center; justify-content: center;
+          padding: 14px 28px; background: transparent; color: #888888;
+          border: 1px solid #2A2A2A; border-radius: 10px;
+          font-size: 15px; font-weight: 600; cursor: pointer;
+          letter-spacing: -0.01em; transition: color 0.15s, border-color 0.15s;
+          text-align: center;
+        }
+        .lp-cta-demo:hover:not(:disabled) { color: #E1306C; border-color: #E1306C; }
+        .lp-cta-demo:disabled { opacity: 0.5; cursor: default; }
       `}</style>
 
       <div style={{ backgroundColor: "#0F0F0F", minHeight: "100vh", color: "#F5F5F5" }}>
@@ -219,12 +243,16 @@ export default function LandingPage() {
                 <Link href="/register" className="lp-cta-primary w-full md:w-auto">
                   Get Started
                 </Link>
+                <button
+                  onClick={handleDemo}
+                  disabled={isDemoLoading}
+                  className="lp-cta-demo w-full md:w-auto"
+                >
+                  {isDemoLoading ? "Loading..." : "Try Demo"}
+                </button>
                 <p style={{ fontSize: "13px", color: "#666666", margin: 0 }}>
                   Already have an account?{" "}
                   <Link href="/login" className="lp-signin-link">Sign in</Link>
-                </p>
-                <p style={{ fontSize: "11px", color: "#888888", margin: 0 }}>
-                  No complicated setup. Start scheduling in minutes.
                 </p>
               </div>
             </div>

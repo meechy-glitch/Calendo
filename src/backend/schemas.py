@@ -23,6 +23,15 @@ class Token(BaseModel):
     expires_in: int
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class PostCreate(BaseModel):
     title: str
     caption: Optional[str] = None

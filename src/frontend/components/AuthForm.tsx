@@ -1,5 +1,6 @@
 "use client"
 import * as React from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -85,6 +86,17 @@ export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, erro
               />
               {!isLogin && (
                 <p className="text-xs" style={{ color: "#888888" }}>Must be at least 8 characters</p>
+              )}
+              {isLogin && (
+                <div className="text-right">
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs hover:underline underline-offset-4"
+                    style={{ color: "#888888" }}
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               )}
             </div>
 

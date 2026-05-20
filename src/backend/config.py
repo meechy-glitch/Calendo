@@ -8,3 +8,4 @@ SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production-m
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 JWT_EXPIRE_DAYS: int = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
+RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
