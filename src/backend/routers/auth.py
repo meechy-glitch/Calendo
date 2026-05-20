@@ -167,16 +167,16 @@ def demo(db: Session = Depends(get_db)):
     month = today.month
     days_in_month = calendar.monthrange(year, month)[1]
 
-    for title, platform, status, day, sched_time in _DEMO_POSTS:
-        actual_day = min(day, days_in_month)
+    for post_data in _DEMO_POSTS:
+        actual_day = min(post_data["day"], days_in_month)
         db_post = models.Post(
             user_id=db_user.id,
-            title=title,
+            title=post_data["title"],
             caption=None,
-            platform=platform,
+            platform=post_data["platform"],
             scheduled_date=date(year, month, actual_day),
-            status=status,
-            scheduled_time=sched_time,
+            status=post_data["status"],
+            scheduled_time=post_data["scheduled_time"],
             notes=None,
         )
         db.add(db_post)
