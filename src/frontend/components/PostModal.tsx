@@ -190,7 +190,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px] border-[#2A2A2A] flex flex-col max-h-[90dvh]" style={{ backgroundColor: "#1A1A1A" }}>
+      <DialogContent className="sm:max-w-[480px] border-[#2A2A2A] flex flex-col max-h-[90dvh] overflow-x-hidden" style={{ backgroundColor: "#1A1A1A" }}>
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2" style={{ color: "#F5F5F5" }}>
             {mode === "create" ? "Create Post" : isPublished ? (
@@ -199,7 +199,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           </DialogTitle>
         </DialogHeader>
 
-        <div className={cn("flex flex-col gap-5 py-4 overflow-y-auto flex-1 min-h-0", isPublished && "opacity-60")}>
+        <div className={cn("flex flex-col gap-5 py-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0 max-w-full", isPublished && "opacity-60")}>
           {isPublished && (
             <div
               className="flex items-center gap-2 rounded-md border px-3 py-2"
@@ -259,7 +259,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
                   return (
                     <label
                       key={p.value}
-                      className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 transition-colors"
+                      className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 transition-colors w-full max-w-full"
                       style={{
                         borderColor: checked ? PLATFORM_COLORS[p.value] : "#2A2A2A",
                         backgroundColor: checked ? `${PLATFORM_COLORS[p.value]}14` : "#0F0F0F",

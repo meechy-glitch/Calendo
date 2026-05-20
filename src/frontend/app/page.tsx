@@ -131,6 +131,7 @@ export default function LandingPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [isDemoLoading, setIsDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState<string | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -143,13 +144,15 @@ export default function LandingPage() {
 
   const handleDemo = async () => {
     setIsDemoLoading(true)
+    setDemoError(null)
     try {
       const data = await demoApi()
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("email", "demo@calendo.app")
       router.push("/dashboard")
-    } catch {
+    } catch (err) {
       setIsDemoLoading(false)
+      setDemoError(err instanceof Error ? err.message : "Demo unavailable. Please try again.")
     }
   }
 
@@ -250,6 +253,9 @@ export default function LandingPage() {
                 >
                   {isDemoLoading ? "Loading..." : "Try Demo"}
                 </button>
+                {demoError && (
+                  <p style={{ fontSize: "12px", color: "#E1306C", margin: 0 }}>{demoError}</p>
+                )}
                 <p style={{ fontSize: "13px", color: "#666666", margin: 0 }}>
                   Already have an account?{" "}
                   <Link href="/login" className="lp-signin-link">Sign in</Link>
