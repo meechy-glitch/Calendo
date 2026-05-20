@@ -8,6 +8,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from src.backend.database import get_db
 from src.backend import schemas, crud, models
+from src.backend.models import PlatformEnum, StatusEnum
 from src.backend.auth import verify_password, create_access_token, hash_password
 from src.backend.config import RESEND_API_KEY, FRONTEND_URL
 
@@ -133,21 +134,21 @@ DEMO_EMAIL = "demo@calendo.app"
 DEMO_PASSWORD = "demo1234"
 
 _DEMO_POSTS = [
-    ("Product launch announcement", "instagram", "published", 2, "10:00"),
-    ("Behind the scenes reel", "tiktok", "published", 5, "14:30"),
-    ("Weekly tips thread", "x", "published", 7, "09:00"),
-    ("Team spotlight", "linkedin", "published", 9, "11:00"),
-    ("New feature drop", "instagram", "published", 12, "16:00"),
-    ("Customer success story", "linkedin", "scheduled", 14, "10:30"),
-    ("How we do it - BTS", "tiktok", "scheduled", 16, "13:00"),
-    ("Industry insights", "x", "scheduled", 18, "08:30"),
-    ("Weekend Q&A", "instagram", "scheduled", 21, "12:00"),
-    ("Founder's note", "linkedin", "scheduled", 23, "09:30"),
-    ("Product demo", "tiktok", "draft", 25, "15:00"),
-    ("Trending audio drop", "instagram", "draft", 26, None),
-    ("Partnership announcement", "linkedin", "draft", 28, "11:30"),
-    ("Community highlights", "x", "draft", 29, None),
-    ("Month recap reel", "instagram", "draft", 30, "17:00"),
+    ("Product launch announcement", PlatformEnum.instagram, StatusEnum.published, 2, "10:00"),
+    ("Behind the scenes reel", PlatformEnum.tiktok, StatusEnum.published, 5, "14:30"),
+    ("Weekly tips thread", PlatformEnum.x, StatusEnum.published, 7, "09:00"),
+    ("Team spotlight", PlatformEnum.linkedin, StatusEnum.published, 9, "11:00"),
+    ("New feature drop", PlatformEnum.instagram, StatusEnum.published, 12, "16:00"),
+    ("Customer success story", PlatformEnum.linkedin, StatusEnum.scheduled, 14, "10:30"),
+    ("How we do it - BTS", PlatformEnum.tiktok, StatusEnum.scheduled, 16, "13:00"),
+    ("Industry insights", PlatformEnum.x, StatusEnum.scheduled, 18, "08:30"),
+    ("Weekend Q&A", PlatformEnum.instagram, StatusEnum.scheduled, 21, "12:00"),
+    ("Founder's note", PlatformEnum.linkedin, StatusEnum.scheduled, 23, "09:30"),
+    ("Product demo", PlatformEnum.tiktok, StatusEnum.draft, 25, "15:00"),
+    ("Trending audio drop", PlatformEnum.instagram, StatusEnum.draft, 26, None),
+    ("Partnership announcement", PlatformEnum.linkedin, StatusEnum.draft, 28, "11:30"),
+    ("Community highlights", PlatformEnum.x, StatusEnum.draft, 29, None),
+    ("Month recap reel", PlatformEnum.instagram, StatusEnum.draft, 30, "17:00"),
 ]
 
 
@@ -172,9 +173,9 @@ def demo(db: Session = Depends(get_db)):
             user_id=db_user.id,
             title=title,
             caption=None,
-            platform=models.PlatformEnum(platform),
+            platform=platform,
             scheduled_date=date(year, month, actual_day),
-            status=models.StatusEnum(status),
+            status=status,
             scheduled_time=sched_time,
             notes=None,
         )
