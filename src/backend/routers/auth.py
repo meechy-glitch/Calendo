@@ -134,23 +134,22 @@ DEMO_EMAIL = "demo@calendo.app"
 DEMO_PASSWORD = "demo1234"
 
 _DEMO_POSTS = [
-    ("Product launch announcement", PlatformEnum.instagram, StatusEnum.published, 2, "10:00"),
-    ("Behind the scenes reel", PlatformEnum.tiktok, StatusEnum.published, 5, "14:30"),
-    ("Weekly tips thread", PlatformEnum.x, StatusEnum.published, 7, "09:00"),
-    ("Team spotlight", PlatformEnum.linkedin, StatusEnum.published, 9, "11:00"),
-    ("New feature drop", PlatformEnum.instagram, StatusEnum.published, 12, "16:00"),
-    ("Customer success story", PlatformEnum.linkedin, StatusEnum.scheduled, 14, "10:30"),
-    ("How we do it - BTS", PlatformEnum.tiktok, StatusEnum.scheduled, 16, "13:00"),
-    ("Industry insights", PlatformEnum.x, StatusEnum.scheduled, 18, "08:30"),
-    ("Weekend Q&A", PlatformEnum.instagram, StatusEnum.scheduled, 21, "12:00"),
-    ("Founder's note", PlatformEnum.linkedin, StatusEnum.scheduled, 23, "09:30"),
-    ("Product demo", PlatformEnum.tiktok, StatusEnum.draft, 25, "15:00"),
-    ("Trending audio drop", PlatformEnum.instagram, StatusEnum.draft, 26, None),
-    ("Partnership announcement", PlatformEnum.linkedin, StatusEnum.draft, 28, "11:30"),
-    ("Community highlights", PlatformEnum.x, StatusEnum.draft, 29, None),
-    ("Month recap reel", PlatformEnum.instagram, StatusEnum.draft, 30, "17:00"),
+    {"title": "Product launch announcement", "platform": PlatformEnum.instagram, "status": StatusEnum.published, "day": 2, "scheduled_time": "10:00"},
+    {"title": "Behind the scenes reel", "platform": PlatformEnum.tiktok, "status": StatusEnum.published, "day": 5, "scheduled_time": "14:30"},
+    {"title": "Weekly tips thread", "platform": PlatformEnum.x, "status": StatusEnum.published, "day": 7, "scheduled_time": "09:00"},
+    {"title": "Team spotlight", "platform": PlatformEnum.linkedin, "status": StatusEnum.published, "day": 9, "scheduled_time": "11:00"},
+    {"title": "New feature drop", "platform": PlatformEnum.instagram, "status": StatusEnum.published, "day": 12, "scheduled_time": "16:00"},
+    {"title": "Customer success story", "platform": PlatformEnum.linkedin, "status": StatusEnum.scheduled, "day": 14, "scheduled_time": "10:30"},
+    {"title": "How we do it - BTS", "platform": PlatformEnum.tiktok, "status": StatusEnum.scheduled, "day": 16, "scheduled_time": "13:00"},
+    {"title": "Industry insights", "platform": PlatformEnum.x, "status": StatusEnum.scheduled, "day": 18, "scheduled_time": "08:30"},
+    {"title": "Weekend Q&A", "platform": PlatformEnum.instagram, "status": StatusEnum.scheduled, "day": 21, "scheduled_time": "12:00"},
+    {"title": "Founder's note", "platform": PlatformEnum.linkedin, "status": StatusEnum.scheduled, "day": 23, "scheduled_time": "09:30"},
+    {"title": "Product demo", "platform": PlatformEnum.tiktok, "status": StatusEnum.draft, "day": 25, "scheduled_time": "15:00"},
+    {"title": "Trending audio drop", "platform": PlatformEnum.instagram, "status": StatusEnum.draft, "day": 26, "scheduled_time": None},
+    {"title": "Partnership announcement", "platform": PlatformEnum.linkedin, "status": StatusEnum.draft, "day": 28, "scheduled_time": "11:30"},
+    {"title": "Community highlights", "platform": PlatformEnum.x, "status": StatusEnum.draft, "day": 29, "scheduled_time": None},
+    {"title": "Month recap reel", "platform": PlatformEnum.instagram, "status": StatusEnum.draft, "day": 30, "scheduled_time": "17:00"},
 ]
-
 
 @router.post("/demo", response_model=schemas.Token)
 def demo(db: Session = Depends(get_db)):
