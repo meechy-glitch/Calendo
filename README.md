@@ -1,82 +1,55 @@
 # Calendo
 
-A Content calendar web app for creative brands, agencies & startups.
+Content calendar for social media teams. Plan, schedule and track posts across Instagram, X, TikTok and LinkedIn from one place.
 
-## Local Setup
+## Live
+- Frontend: https://calendo-omega.vercel.app
+- Backend: https://calendo-api.onrender.com
 
-### Prerequisites
+## Tech Stack
+- **Backend:** FastAPI, PostgreSQL, SQLAlchemy, Alembic, JWT auth, bcrypt
+- **Frontend:** Next.js 16 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- **Database:** Supabase (PostgreSQL)
+- **Deployment:** Vercel (frontend), Render Docker (backend)
 
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL (or use SQLite for development)
+## Features
+- Auth with JWT (register, login, password reset)
+- Post scheduling across Instagram, X, TikTok and LinkedIn
+- Multi-platform posting — create one post across multiple platforms at once
+- Desktop monthly calendar grid with platform color coding
+- Mobile iOS-style calendar view
+- Draft → Scheduled → Published workflow
+- Platform filter, CSV export, analytics summary
+- Daily summary banner showing today's scheduled posts
+- Published posts locked as read-only
+- Demo account with sample posts
+
+## Local Development
 
 ### Backend
-
 ```bash
-# Create and activate virtual environment
+cd into project root
 python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env — set DATABASE_URL, SECRET_KEY (min 32 chars), FRONTEND_URL
-
-# Run database migrations
 alembic upgrade head
-
-# Start the API server
 uvicorn src.backend.main:app --reload --port 8000
 ```
 
-API will be available at http://localhost:8000. Docs at http://localhost:8000/docs.
-
 ### Frontend
-
 ```bash
 cd src/frontend
 npm install
 npm run dev
 ```
 
-Frontend will be available at http://localhost:5173.
-
-The Vite dev server proxies `/api` requests to `http://localhost:8000`.
-
-### Running Tests
-
-```bash
-# From project root, with venv activated
-pytest tests/ -v
+### Environment Variables
+Create a `.env` file in the project root:
 ```
-
-Tests use SQLite in-memory database — no PostgreSQL required for testing.
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `SECRET_KEY` | JWT signing key (min 32 chars) |
-| `ENVIRONMENT` | `development` or `production` |
-| `FRONTEND_URL` | Frontend URL for CORS (e.g. `http://localhost:5173`) |
-| `JWT_EXPIRE_DAYS` | JWT token expiry in days (default: 7) |
-
-## Deployment
-
-Defined in `render.yaml`. Three Render services:
-
-1. **Web Service** — FastAPI backend
-2. **Static Site** — React frontend (built from `src/frontend/dist`)
-3. **PostgreSQL** — Managed database (free tier)
-
-Deploy by connecting the GitHub repo to Render and using the Blueprint deploy option.
-
-## Tech Stack
-
-- **Backend**: FastAPI, SQLAlchemy, Alembic, python-jose, passlib, slowapi
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
-- **Database**: PostgreSQL (production), SQLite (tests)
-- **Hosting**: Render
+DATABASE_URL=your_postgresql_url
+SECRET_KEY=your_secret_key
+ENVIRONMENT=development
+FRONTEND_URL=http://localhost:3000
+JWT_EXPIRE_DAYS=7
+RESEND_API_KEY=your_resend_api_key
+```
