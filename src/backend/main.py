@@ -34,6 +34,6 @@ app.include_router(auth_router.router)
 app.include_router(posts_router.router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok"}
