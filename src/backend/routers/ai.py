@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime
-from typing import Optional
-from pydantic import BaseModel, field_validator
+from typing import Optional, Union
+from pydantic import BaseModel, field_validator, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -108,7 +108,10 @@ _CHAT_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "post_id": {"type": "integer"},
+                    "post_id": {
+                        "anyOf": [{"type": "integer"}, {"type": "string"}],
+                        "description": "ID of the post to update",
+                    },
                     "title": {"type": "string"},
                     "caption": {"type": "string"},
                     "platform": {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin"]},
@@ -129,7 +132,10 @@ _CHAT_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "post_id": {"type": "integer"},
+                    "post_id": {
+                        "anyOf": [{"type": "integer"}, {"type": "string"}],
+                        "description": "ID of the post to reschedule",
+                    },
                     "scheduled_date": {"type": "string", "description": "New date in YYYY-MM-DD format"},
                     "scheduled_time": {"type": "string", "description": "New time in HH:MM format (optional)"},
                 },
@@ -189,7 +195,7 @@ class _PostArgs(BaseModel):
 
 
 class _UpdatePostArgs(BaseModel):
-    post_id: int
+    post_id: Union[int, str]
     title: Optional[str] = None
     caption: Optional[str] = None
     platform: Optional[str] = None
@@ -198,11 +204,27 @@ class _UpdatePostArgs(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
 
+    @field_validator("post_id", mode="before")
+    @classmethod
+    def coerce_post_id(cls, v):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"post_id must be an integer, got {v!r}")
+
 
 class _RescheduleArgs(BaseModel):
-    post_id: int
+    post_id: Union[int, str]
     scheduled_date: str
     scheduled_time: Optional[str] = None
+
+    @field_validator("post_id", mode="before")
+    @classmethod
+    def coerce_post_id(cls, v):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"post_id must be an integer, got {v!r}")
 
 
 class _BulkCreateArgs(BaseModel):
