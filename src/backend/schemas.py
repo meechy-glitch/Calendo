@@ -52,6 +52,23 @@ class PostUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class BrandVoiceUpsert(BaseModel):
+    tone: Optional[str] = None
+    dos: Optional[str] = None
+    donts: Optional[str] = None
+    sample_posts: Optional[str] = None
+
+
+class BrandVoiceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    tone: Optional[str] = None
+    dos: Optional[str] = None
+    donts: Optional[str] = None
+    sample_posts: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
 class PostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -29,6 +29,7 @@ class User(Base):
 
     posts = relationship("Post", back_populates="user")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
+    brand_voice = relationship("BrandVoice", back_populates="user", uselist=False)
 
 
 class Post(Base):
@@ -47,6 +48,20 @@ class Post(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
+
+
+class BrandVoice(Base):
+    __tablename__ = "brand_voice"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    tone = Column(String(200), nullable=True)
+    dos = Column(String(1000), nullable=True)
+    donts = Column(String(1000), nullable=True)
+    sample_posts = Column(String(2000), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="brand_voice")
 
 
 class PasswordResetToken(Base):

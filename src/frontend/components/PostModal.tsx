@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
+import { AICaptionButton } from "@/components/AICaptionButton"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
 export type PostStatus = "draft" | "scheduled" | "published"
@@ -243,6 +244,14 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
+            {!isPublished && (
+              <AICaptionButton
+                platform={mode === "create" ? selectedPlatforms[0] : platform}
+                idea={title.trim() || caption.trim()}
+                disabled={isPublished}
+                onSelectCaption={setCaption}
+              />
+            )}
             {captionOverLimit && restrictivePlatform && (
               <p className="text-xs" style={{ color: "#E1306C" }}>
                 Exceeds {PLATFORM_LABELS[restrictivePlatform]} character limit

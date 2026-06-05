@@ -14,6 +14,8 @@ import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { getPosts, createPost, updatePost, deletePost, exportCSV } from "@/services/posts"
 import { AnalyticsSummary } from "@/components/AnalyticsSummary"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
+import { ChatPanel } from "@/components/ChatPanel"
+import { BrandVoiceSettings } from "@/components/BrandVoiceSettings"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
 
@@ -83,6 +85,8 @@ function DashboardContent() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>()
   const [selectedPost, setSelectedPost] = useState<PostData | undefined>()
+  const [chatOpen, setChatOpen] = useState(false)
+  const [brandVoiceOpen, setBrandVoiceOpen] = useState(false)
 
   const isMobile = useMediaQuery("(max-width: 767px)")
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
@@ -397,6 +401,40 @@ function DashboardContent() {
       />
 
       {!isMobile && <FeedbackButton onSubmit={() => {}} />}
+
+      {/* AI floating buttons */}
+      <div className="fixed bottom-6 left-4 z-40 flex flex-col items-start gap-2">
+        <button
+          onClick={() => setBrandVoiceOpen(true)}
+          className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+          style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", color: "#888888" }}
+        >
+          Brand Voice
+        </button>
+        <button
+          onClick={() => setChatOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C]"
+          style={{
+            backgroundColor: chatOpen ? "#E1306C" : "#1A1A1A",
+            borderColor: chatOpen ? "#E1306C" : "#2A2A2A",
+            color: chatOpen ? "#F5F5F5" : "#888888",
+          }}
+        >
+          ✨ AI Assistant
+        </button>
+      </div>
+
+      {chatOpen && (
+        <ChatPanel
+          onClose={() => setChatOpen(false)}
+          onChanges={fetchPosts}
+        />
+      )}
+
+      <BrandVoiceSettings
+        isOpen={brandVoiceOpen}
+        onClose={() => setBrandVoiceOpen(false)}
+      />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>

@@ -1,14 +1,12 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from src.backend.config import FRONTEND_URL, ENVIRONMENT
+from src.backend.limiter import limiter
 from src.backend.routers import auth as auth_router
 from src.backend.routers import posts as posts_router
-
-limiter = Limiter(key_func=get_remote_address, enabled=os.getenv("ENVIRONMENT") != "test")
+from src.backend.routers import ai as ai_router
 
 app = FastAPI(title="Calendo API", version="1.0.0")
 app.state.limiter = limiter
@@ -32,6 +30,7 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(posts_router.router)
+app.include_router(ai_router.router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
