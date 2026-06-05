@@ -47,6 +47,11 @@ publishing half.)
   since Calendo can't verify publication without the API).
 - Per-platform spec validation/warnings before scheduling.
 
+### Phase 6 — Voice input
+Spec: `CALENDO_AI_VOICE_SPEC.md`. Mic button on the chat assistant panel and the caption
+idea field. Part A: Browser Web Speech API (frontend only, no backend). Part B: Groq
+Whisper transcription endpoint (broader browser support + higher accuracy).
+
 That's a complete shippable product: plan -> AI-assisted content -> media ready ->
 reminder -> post in a couple taps.
 
@@ -87,7 +92,8 @@ Direct publish is the paid upgrade: "Calendo posts for you, automatically."
 - `CALENDO_AI_VISION_SPEC.md` -> Phase 3 (v1) — image-aware captioning.
 - `CALENDO_AI_VIDEO_SPEC.md` -> Phase 4 (v1) — video upload + thumbnails (NO publishing).
 - `CALENDO_AI_HANDOFF_SPEC.md` -> Phase 5 (v1) — hand-off / publish-assist engine.
-- `CALENDO_AI_PUBLISH_SPEC.md` -> Phases 6-7 (v2) — OAuth + direct publishing (premium).
+- `CALENDO_AI_VOICE_SPEC.md` -> Phase 6 (v1) — voice input.
+- `CALENDO_AI_PUBLISH_SPEC.md` -> Phases 7-8 (v2) — OAuth + direct publishing (premium).
 
 ---
 
