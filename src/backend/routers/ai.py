@@ -63,14 +63,18 @@ _CHAT_TOOLS = [
                 "properties": {
                     "month": {"type": "string", "description": "Month in YYYY-MM format"},
                     "platform": {
-                        "type": "string",
-                        "enum": ["instagram", "x", "tiktok", "linkedin"],
-                        "description": "Filter by platform",
+                        "anyOf": [
+                            {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin"]},
+                            {"type": "null"},
+                        ],
+                        "description": "Filter by platform (omit or null for all)",
                     },
                     "status": {
-                        "type": "string",
-                        "enum": ["draft", "scheduled", "published"],
-                        "description": "Filter by status",
+                        "anyOf": [
+                            {"type": "string", "enum": ["draft", "scheduled", "published"]},
+                            {"type": "null"},
+                        ],
+                        "description": "Filter by status (omit or null for all)",
                     },
                 },
                 "required": ["month"],
@@ -274,11 +278,14 @@ async def _execute_tool(
             a = _ListPostsArgs(**args)
         except Exception as e:
             return json.dumps({"error": str(e)})
+        # Coerce empty strings sent by the model to None
+        platform_filter = a.platform or None
+        status_filter = a.status or None
         posts = crud.get_posts(db, user_id, a.month)
-        if a.platform:
-            posts = [p for p in posts if p.platform.value == a.platform]
-        if a.status:
-            posts = [p for p in posts if p.status.value == a.status]
+        if platform_filter:
+            posts = [p for p in posts if p.platform.value == platform_filter]
+        if status_filter:
+            posts = [p for p in posts if p.status.value == status_filter]
         return json.dumps([
             {
                 "id": p.id,
