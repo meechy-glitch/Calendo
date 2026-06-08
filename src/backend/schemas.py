@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
 from src.backend.models import PlatformEnum, StatusEnum
 
@@ -59,8 +59,14 @@ class MediaAssetResponse(BaseModel):
     original_filename: Optional[str] = None
     mime_type: Optional[str] = None
     file_size_bytes: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    duration_seconds: Optional[float] = None
+    thumbnail_key: Optional[str] = None
     status: str
     created_at: datetime
+    # Per-platform spec warnings for video assets; populated by the media router
+    spec_warnings: Optional[dict[str, Any]] = None
 
 
 class PostCreate(BaseModel):
@@ -71,7 +77,7 @@ class PostCreate(BaseModel):
     status: StatusEnum = StatusEnum.draft
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
-    media_asset_id: Optional[int] = None
+    media_ids: Optional[List[int]] = None
 
 
 class PostUpdate(BaseModel):
@@ -82,7 +88,7 @@ class PostUpdate(BaseModel):
     status: Optional[StatusEnum] = None
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
-    media_asset_id: Optional[int] = None
+    media_ids: Optional[List[int]] = None
 
 
 class BrandVoiceUpsert(BaseModel):
@@ -114,7 +120,6 @@ class PostResponse(BaseModel):
     status: StatusEnum
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
-    media_asset_id: Optional[int] = None
-    media_asset: Optional[MediaAssetResponse] = None
+    media_assets: List[MediaAssetResponse] = []
     created_at: datetime
     updated_at: datetime

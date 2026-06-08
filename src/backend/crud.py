@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from src.backend import models, schemas
 from src.backend.auth import hash_password
 
@@ -20,10 +20,16 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     return db_user
 
 
+def _post_query(db: Session):
+    return db.query(models.Post).options(
+        joinedload(models.Post.post_media_items).joinedload(models.PostMedia.media)
+    )
+
+
 def get_posts(
     db: Session, user_id: int, month: Optional[str] = None
 ) -> List[models.Post]:
-    query = db.query(models.Post).filter(models.Post.user_id == user_id)
+    query = _post_query(db).filter(models.Post.user_id == user_id)
     if month:
         parts = month.split("-")
         year, m = int(parts[0]), int(parts[1])
@@ -41,16 +47,23 @@ def get_posts(
 def create_post(
     db: Session, post: schemas.PostCreate, user_id: int
 ) -> models.Post:
-    post_data = post.model_dump()
+    post_data = post.model_dump(exclude={"media_ids"})
     db_post = models.Post(**post_data, user_id=user_id)
     db.add(db_post)
+    db.flush()  # get id before inserting post_media
+
+    if post.media_ids:
+        for position, media_id in enumerate(post.media_ids):
+            db.add(models.PostMedia(post_id=db_post.id, media_id=media_id, position=position))
+
     db.commit()
     db.refresh(db_post)
-    return db_post
+    # Re-fetch with eager loads
+    return _post_query(db).filter(models.Post.id == db_post.id).one()
 
 
 def get_post_by_id(db: Session, post_id: int) -> Optional[models.Post]:
-    return db.query(models.Post).filter(models.Post.id == post_id).first()
+    return _post_query(db).filter(models.Post.id == post_id).first()
 
 
 def update_post(
@@ -61,11 +74,19 @@ def update_post(
         return "not_found"
     if db_post.user_id != user_id:
         return "forbidden"
-    for key, value in post_update.model_dump(exclude_unset=True).items():
+
+    update_data = post_update.model_dump(exclude_unset=True, exclude={"media_ids"})
+    for key, value in update_data.items():
         setattr(db_post, key, value)
+
+    if post_update.media_ids is not None:
+        # Replace all media associations
+        db.query(models.PostMedia).filter(models.PostMedia.post_id == post_id).delete()
+        for position, media_id in enumerate(post_update.media_ids):
+            db.add(models.PostMedia(post_id=post_id, media_id=media_id, position=position))
+
     db.commit()
-    db.refresh(db_post)
-    return db_post
+    return _post_query(db).filter(models.Post.id == post_id).one()
 
 
 def delete_post(db: Session, post_id: int, user_id: int) -> str:

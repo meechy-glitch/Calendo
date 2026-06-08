@@ -1,6 +1,9 @@
 import enum
 from datetime import datetime
-from sqlalchemy import BigInteger, Boolean, Column, Integer, String, Text, DateTime, Date, ForeignKey, Enum
+from sqlalchemy import (
+    BigInteger, Boolean, Column, Float, Integer, String, Text,
+    DateTime, Date, ForeignKey, Enum, UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from src.backend.database import Base
 
@@ -31,11 +34,26 @@ class MediaAsset(Base):
     file_size_bytes = Column(BigInteger, nullable=True)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+    thumbnail_key = Column(Text, nullable=True)
     status = Column(String(20), default="uploaded", nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     user = relationship("User", back_populates="media_assets")
-    posts = relationship("Post", back_populates="media_asset")
+
+
+class PostMedia(Base):
+    __tablename__ = "post_media"
+
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
+    media_id = Column(Integer, ForeignKey("media_asset.id"), nullable=False)
+    position = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint("post_id", "position", name="uq_post_media_position"),)
+
+    post = relationship("Post", back_populates="post_media_items")
+    media = relationship("MediaAsset")
 
 
 class User(Base):
@@ -65,12 +83,20 @@ class Post(Base):
     status = Column(Enum(StatusEnum, native_enum=False), default=StatusEnum.draft, nullable=False)
     scheduled_time = Column(String(5), nullable=True)
     notes = Column(String(500), nullable=True)
-    media_asset_id = Column(Integer, ForeignKey("media_asset.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
-    media_asset = relationship("MediaAsset", back_populates="posts")
+    post_media_items = relationship(
+        "PostMedia",
+        back_populates="post",
+        order_by="PostMedia.position",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def media_assets(self):
+        return [item.media for item in self.post_media_items]
 
 
 class BrandVoice(Base):

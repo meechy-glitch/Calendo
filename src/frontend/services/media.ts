@@ -41,8 +41,13 @@ export interface MediaAssetResponse {
   original_filename: string | null
   mime_type: string | null
   file_size_bytes: number | null
+  width: number | null
+  height: number | null
+  duration_seconds: number | null
+  thumbnail_key: string | null
   status: string
   created_at: string
+  spec_warnings: Record<string, string[]> | null
 }
 
 export async function presignUpload(
@@ -67,6 +72,11 @@ export async function confirmUpload(mediaAssetId: number): Promise<MediaAssetRes
   return handleResponse(res)
 }
 
+export async function getMediaAsset(mediaAssetId: number): Promise<MediaAssetResponse> {
+  const res = await fetch(`${API_BASE}/media/${mediaAssetId}`, { headers: getHeaders() })
+  return handleResponse(res)
+}
+
 export async function uploadToR2(
   file: File,
   onProgress?: (pct: number) => void,
@@ -82,10 +92,14 @@ export async function uploadToR2(
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
       }
     }
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)))
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error(`Upload failed: ${xhr.status}`))
     xhr.onerror = () => reject(new Error("Upload network error"))
     xhr.send(file)
   })
 
+  // confirm triggers ffmpeg processing for videos (synchronous on server)
   return confirmUpload(media_asset_id)
 }

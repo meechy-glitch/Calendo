@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { AICaptionButton } from "@/components/AICaptionButton"
 import { AIImageCaptionButton } from "@/components/AIImageCaptionButton"
-import { MediaUploader } from "@/components/MediaUploader"
+import { MediaUploader, type MediaItem } from "@/components/MediaUploader"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
 export type PostStatus = "draft" | "scheduled" | "published"
@@ -77,8 +77,7 @@ export interface PostData {
   status: PostStatus
   scheduledTime?: string
   notes?: string
-  mediaAssetId?: number
-  mediaUrl?: string
+  mediaItems?: MediaItem[]
 }
 
 export interface PostModalProps {
@@ -89,6 +88,46 @@ export interface PostModalProps {
   onSave: (postData: PostData) => void
   onDelete?: (postId: string) => void
   onClose: () => void
+}
+
+function VideoSpecWarnings({
+  mediaItems,
+  platforms,
+}: {
+  mediaItems: MediaItem[]
+  platforms: Platform[]
+}) {
+  const warnings = React.useMemo(() => {
+    const result: string[] = []
+    for (const item of mediaItems) {
+      if (!item.asset.spec_warnings) continue
+      for (const platform of platforms) {
+        const w = item.asset.spec_warnings[platform]
+        if (w && w.length > 0) {
+          result.push(...w.map((msg) => `${PLATFORM_LABELS[platform]}: ${msg}`))
+        }
+      }
+    }
+    return [...new Set(result)]
+  }, [mediaItems, platforms])
+
+  if (warnings.length === 0) return null
+
+  return (
+    <div
+      className="flex flex-col gap-1 rounded-md border px-3 py-2"
+      style={{ borderColor: "#E1306C44", backgroundColor: "#E1306C0A" }}
+    >
+      <p className="text-xs font-medium" style={{ color: "#E1306C" }}>
+        Video spec warnings
+      </p>
+      {warnings.map((w, i) => (
+        <p key={i} className="text-xs" style={{ color: "#888888" }}>
+          {w}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete, onClose }: PostModalProps) {
@@ -103,8 +142,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
   const [scheduledTime, setScheduledTime] = React.useState("")
   const [notes, setNotes] = React.useState("")
   const [calendarOpen, setCalendarOpen] = React.useState(false)
-  const [mediaAssetId, setMediaAssetId] = React.useState<number | undefined>(undefined)
-  const [mediaUrl, setMediaUrl] = React.useState<string | undefined>(undefined)
+  const [mediaItems, setMediaItems] = React.useState<MediaItem[]>([])
 
   React.useEffect(() => {
     if (isOpen) {
@@ -117,8 +155,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setStatus(post.status)
         setScheduledTime(post.scheduledTime || "")
         setNotes(post.notes || "")
-        setMediaAssetId(post.mediaAssetId)
-        setMediaUrl(post.mediaUrl)
+        setMediaItems(post.mediaItems || [])
       } else {
         setTitle("")
         setCaption("")
@@ -128,8 +165,7 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setStatus("draft")
         setScheduledTime("")
         setNotes("")
-        setMediaAssetId(undefined)
-        setMediaUrl(undefined)
+        setMediaItems([])
       }
     }
   }, [isOpen, post, scheduledDate])
@@ -145,7 +181,6 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
   const togglePlatform = (p: Platform) => {
     setSelectedPlatforms((prev) => {
       if (prev.includes(p)) {
-        // Don't allow deselecting the last one
         if (prev.length === 1) return prev
         return prev.filter((x) => x !== p)
       }
@@ -155,33 +190,20 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
 
   const handleSave = () => {
     if (!title.trim() || !date) return
+    const base = {
+      id: post?.id,
+      title: title.trim(),
+      caption: caption.trim(),
+      scheduledDate: date,
+      status,
+      scheduledTime: scheduledTime || undefined,
+      notes: notes.trim() || undefined,
+      mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
+    }
     if (mode === "create") {
-      onSave({
-        id: post?.id,
-        title: title.trim(),
-        caption: caption.trim(),
-        platform: selectedPlatforms[0],
-        platforms: selectedPlatforms,
-        scheduledDate: date,
-        status,
-        scheduledTime: scheduledTime || undefined,
-        notes: notes.trim() || undefined,
-        mediaAssetId,
-        mediaUrl,
-      })
+      onSave({ ...base, platform: selectedPlatforms[0], platforms: selectedPlatforms })
     } else {
-      onSave({
-        id: post?.id,
-        title: title.trim(),
-        caption: caption.trim(),
-        platform,
-        scheduledDate: date,
-        status,
-        scheduledTime: scheduledTime || undefined,
-        notes: notes.trim() || undefined,
-        mediaAssetId,
-        mediaUrl,
-      })
+      onSave({ ...base, platform })
     }
     onClose()
   }
@@ -202,6 +224,12 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
       PLATFORM_CHAR_LIMITS[p] < PLATFORM_CHAR_LIMITS[min] ? p : min
     )
   }, [mode, selectedPlatforms, platform])
+
+  const firstVideoAssetId = mediaItems.find(
+    (m) => m.asset.mime_type?.startsWith("video/") === false
+  )?.asset.id ?? mediaItems[0]?.asset.id
+
+  const effectivePlatforms = mode === "create" ? selectedPlatforms : [platform]
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -259,18 +287,15 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
             {!isPublished && (
-              mediaAssetId ? (
+              firstVideoAssetId || mediaItems[0] ? (
                 <AIImageCaptionButton
-                  mediaAssetId={mediaAssetId}
+                  mediaAssetId={mediaItems[0]?.asset.id}
                   platform={mode === "create" ? selectedPlatforms[0] : platform}
                   disabled={isPublished}
                   onSelectCaption={setCaption}
                   onSelectPlatform={(p) => {
-                    if (mode === "create") {
-                      setSelectedPlatforms([p as Platform])
-                    } else {
-                      setPlatform(p as Platform)
-                    }
+                    if (mode === "create") setSelectedPlatforms([p as Platform])
+                    else setPlatform(p as Platform)
                   }}
                 />
               ) : (
@@ -447,13 +472,20 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label style={{ color: "#F5F5F5" }}>Media</Label>
+            <Label style={{ color: "#F5F5F5" }}>
+              Media
+              {mediaItems.length > 1 && (
+                <span className="ml-2 text-xs" style={{ color: "#888888" }}>
+                  Drag to reorder
+                </span>
+              )}
+            </Label>
             <MediaUploader
-              onUploaded={(id, url) => { setMediaAssetId(id); setMediaUrl(url) }}
-              onClear={() => { setMediaAssetId(undefined); setMediaUrl(undefined) }}
-              existingUrl={mediaUrl}
+              items={mediaItems}
+              onChange={setMediaItems}
               disabled={isPublished}
             />
+            <VideoSpecWarnings mediaItems={mediaItems} platforms={effectivePlatforms} />
           </div>
         </div>
 

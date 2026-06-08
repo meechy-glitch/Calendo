@@ -22,6 +22,7 @@ export interface Post {
   status?: PostStatus
   scheduledTime?: string
   mediaUrl?: string
+  isVideo?: boolean
 }
 
 export interface CalendoCalendarProps {
@@ -102,8 +103,20 @@ function PostChip({ post, onClick }: { post: Post; onClick: (post: Post) => void
       title={`${post.title} (${post.platform}) - ${status}`}
     >
       {post.mediaUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.mediaUrl} alt="" className="h-4 w-4 rounded-sm object-cover shrink-0" />
+        <span className="relative h-4 w-4 flex-shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.mediaUrl} alt="" className="h-4 w-4 rounded-sm object-cover" />
+          {post.isVideo && (
+            <span
+              className="absolute inset-0 flex items-center justify-center rounded-sm"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+            >
+              <svg width="5" height="6" viewBox="0 0 5 6" fill="white">
+                <path d="M0 0l5 3-5 3V0z" />
+              </svg>
+            </span>
+          )}
+        </span>
       )}
       {!post.mediaUrl && status === "published" && <Check className="h-3 w-3 shrink-0" />}
       <span className="truncate">

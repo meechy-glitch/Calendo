@@ -33,6 +33,21 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   linkedin: "LinkedIn",
 }
 
+interface ApiMediaAsset {
+  id: number
+  public_url: string | null
+  thumbnail_key: string | null
+  mime_type: string | null
+  storage_key: string
+  file_size_bytes: number | null
+  width: number | null
+  height: number | null
+  duration_seconds: number | null
+  status: string
+  created_at: string
+  spec_warnings: Record<string, string[]> | null
+}
+
 interface ApiPost {
   id: number
   title: string
@@ -42,8 +57,7 @@ interface ApiPost {
   status: string
   scheduled_time: string | null
   notes: string | null
-  media_asset_id: number | null
-  media_asset: { public_url: string | null } | null
+  media_assets: ApiMediaAsset[]
 }
 
 type CalendarPost = Post & { _raw: ApiPost }
@@ -56,7 +70,17 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
+function _thumbUrl(asset: ApiMediaAsset): string | undefined {
+  if (!asset.public_url) return undefined
+  if (asset.thumbnail_key) {
+    const base = asset.public_url.split("/users/")[0]
+    return `${base}/${asset.thumbnail_key}`
+  }
+  return asset.public_url
+}
+
 function toCalendarPost(p: ApiPost): CalendarPost {
+  const firstAsset = p.media_assets?.[0]
   return {
     id: String(p.id),
     title: p.title,
@@ -64,7 +88,8 @@ function toCalendarPost(p: ApiPost): CalendarPost {
     date: new Date(p.scheduled_date + "T00:00:00"),
     status: p.status as PostStatus,
     scheduledTime: p.scheduled_time || undefined,
-    mediaUrl: p.media_asset?.public_url ?? undefined,
+    mediaUrl: firstAsset ? _thumbUrl(firstAsset) : undefined,
+    isVideo: firstAsset?.mime_type?.startsWith("video/") ?? false,
     _raw: p,
   }
 }
@@ -138,14 +163,31 @@ function DashboardContent() {
       status: raw.status as PostStatus,
       scheduledTime: raw.scheduled_time || undefined,
       notes: raw.notes || undefined,
-      mediaAssetId: raw.media_asset_id ?? undefined,
-      mediaUrl: raw.media_asset?.public_url ?? undefined,
+      mediaItems: (raw.media_assets || []).map((a) => ({
+        asset: {
+          id: a.id,
+          storage_key: a.storage_key,
+          public_url: a.public_url,
+          original_filename: null,
+          mime_type: a.mime_type,
+          file_size_bytes: a.file_size_bytes,
+          width: a.width,
+          height: a.height,
+          duration_seconds: a.duration_seconds,
+          thumbnail_key: a.thumbnail_key,
+          status: a.status,
+          created_at: a.created_at,
+          spec_warnings: a.spec_warnings,
+        },
+        localUrl: _thumbUrl(a) || "",
+      })),
     })
     setModalMode("edit")
     setModalOpen(true)
   }
 
   const handleSave = async (postData: PostData) => {
+    const mediaIds = postData.mediaItems?.map((m) => m.asset.id) ?? null
     const baseBody = {
       title: postData.title,
       caption: postData.caption,
@@ -153,7 +195,7 @@ function DashboardContent() {
       status: postData.status,
       scheduled_time: postData.scheduledTime || null,
       notes: postData.notes || null,
-      media_asset_id: postData.mediaAssetId ?? null,
+      media_ids: mediaIds,
     }
 
     if (modalMode === "create") {
@@ -185,8 +227,20 @@ function DashboardContent() {
         status: postData.status,
         scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
-        media_asset_id: postData.mediaAssetId ?? null,
-        media_asset: postData.mediaUrl ? { public_url: postData.mediaUrl } : null,
+        media_assets: (postData.mediaItems || []).map((m) => ({
+          id: m.asset.id,
+          public_url: m.asset.public_url,
+          thumbnail_key: m.asset.thumbnail_key,
+          mime_type: m.asset.mime_type,
+          storage_key: m.asset.storage_key,
+          file_size_bytes: m.asset.file_size_bytes,
+          width: m.asset.width,
+          height: m.asset.height,
+          duration_seconds: m.asset.duration_seconds,
+          status: m.asset.status,
+          created_at: m.asset.created_at,
+          spec_warnings: m.asset.spec_warnings,
+        })),
       }
       setPosts((prev) => [...prev, { ...toCalendarPost(tempRaw), id: tempId }])
       try {
@@ -209,8 +263,20 @@ function DashboardContent() {
         status: postData.status,
         scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
-        media_asset_id: postData.mediaAssetId ?? null,
-        media_asset: postData.mediaUrl ? { public_url: postData.mediaUrl } : null,
+        media_assets: (postData.mediaItems || []).map((m) => ({
+          id: m.asset.id,
+          public_url: m.asset.public_url,
+          thumbnail_key: m.asset.thumbnail_key,
+          mime_type: m.asset.mime_type,
+          storage_key: m.asset.storage_key,
+          file_size_bytes: m.asset.file_size_bytes,
+          width: m.asset.width,
+          height: m.asset.height,
+          duration_seconds: m.asset.duration_seconds,
+          status: m.asset.status,
+          created_at: m.asset.created_at,
+          spec_warnings: m.asset.spec_warnings,
+        })),
       }
       setPosts((prev) => prev.map((p) => (p.id === postData.id ? toCalendarPost(tempRaw) : p)))
       try {
