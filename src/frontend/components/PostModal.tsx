@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { AICaptionButton } from "@/components/AICaptionButton"
+import { MediaUploader } from "@/components/MediaUploader"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
 export type PostStatus = "draft" | "scheduled" | "published"
@@ -75,6 +76,8 @@ export interface PostData {
   status: PostStatus
   scheduledTime?: string
   notes?: string
+  mediaAssetId?: number
+  mediaUrl?: string
 }
 
 export interface PostModalProps {
@@ -99,6 +102,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
   const [scheduledTime, setScheduledTime] = React.useState("")
   const [notes, setNotes] = React.useState("")
   const [calendarOpen, setCalendarOpen] = React.useState(false)
+  const [mediaAssetId, setMediaAssetId] = React.useState<number | undefined>(undefined)
+  const [mediaUrl, setMediaUrl] = React.useState<string | undefined>(undefined)
 
   React.useEffect(() => {
     if (isOpen) {
@@ -111,6 +116,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setStatus(post.status)
         setScheduledTime(post.scheduledTime || "")
         setNotes(post.notes || "")
+        setMediaAssetId(post.mediaAssetId)
+        setMediaUrl(post.mediaUrl)
       } else {
         setTitle("")
         setCaption("")
@@ -120,6 +127,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         setStatus("draft")
         setScheduledTime("")
         setNotes("")
+        setMediaAssetId(undefined)
+        setMediaUrl(undefined)
       }
     }
   }, [isOpen, post, scheduledDate])
@@ -156,6 +165,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         status,
         scheduledTime: scheduledTime || undefined,
         notes: notes.trim() || undefined,
+        mediaAssetId,
+        mediaUrl,
       })
     } else {
       onSave({
@@ -167,6 +178,8 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
         status,
         scheduledTime: scheduledTime || undefined,
         notes: notes.trim() || undefined,
+        mediaAssetId,
+        mediaUrl,
       })
     }
     onClose()
@@ -413,6 +426,16 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               disabled={isPublished}
               className="resize-none border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label style={{ color: "#F5F5F5" }}>Media</Label>
+            <MediaUploader
+              onUploaded={(id, url) => { setMediaAssetId(id); setMediaUrl(url) }}
+              onClear={() => { setMediaAssetId(undefined); setMediaUrl(undefined) }}
+              existingUrl={mediaUrl}
+              disabled={isPublished}
             />
           </div>
         </div>

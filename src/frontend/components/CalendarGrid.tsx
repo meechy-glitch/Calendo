@@ -21,6 +21,7 @@ export interface Post {
   date: Date
   status?: PostStatus
   scheduledTime?: string
+  mediaUrl?: string
 }
 
 export interface CalendoCalendarProps {
@@ -94,13 +95,17 @@ function PostChip({ post, onClick }: { post: Post; onClick: (post: Post) => void
     <div
       onClick={(e) => { e.stopPropagation(); onClick(post) }}
       className={cn(
-        "flex w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-left text-xs font-medium text-white transition-opacity hover:opacity-80 cursor-pointer",
+        "flex w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-left text-xs font-medium text-white transition-opacity hover:opacity-80 cursor-pointer",
         status === "draft" && "bg-transparent"
       )}
       style={getChipStyles()}
       title={`${post.title} (${post.platform}) - ${status}`}
     >
-      {status === "published" && <Check className="h-3 w-3 shrink-0" />}
+      {post.mediaUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={post.mediaUrl} alt="" className="h-4 w-4 rounded-sm object-cover shrink-0" />
+      )}
+      {!post.mediaUrl && status === "published" && <Check className="h-3 w-3 shrink-0" />}
       <span className="truncate">
         {post.title}{post.scheduledTime ? ` · ${formatTime12h(post.scheduledTime)}` : ""}
       </span>

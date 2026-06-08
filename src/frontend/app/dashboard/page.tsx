@@ -42,6 +42,8 @@ interface ApiPost {
   status: string
   scheduled_time: string | null
   notes: string | null
+  media_asset_id: number | null
+  media_asset: { public_url: string | null } | null
 }
 
 type CalendarPost = Post & { _raw: ApiPost }
@@ -62,6 +64,7 @@ function toCalendarPost(p: ApiPost): CalendarPost {
     date: new Date(p.scheduled_date + "T00:00:00"),
     status: p.status as PostStatus,
     scheduledTime: p.scheduled_time || undefined,
+    mediaUrl: p.media_asset?.public_url ?? undefined,
     _raw: p,
   }
 }
@@ -135,6 +138,8 @@ function DashboardContent() {
       status: raw.status as PostStatus,
       scheduledTime: raw.scheduled_time || undefined,
       notes: raw.notes || undefined,
+      mediaAssetId: raw.media_asset_id ?? undefined,
+      mediaUrl: raw.media_asset?.public_url ?? undefined,
     })
     setModalMode("edit")
     setModalOpen(true)
@@ -148,6 +153,7 @@ function DashboardContent() {
       status: postData.status,
       scheduled_time: postData.scheduledTime || null,
       notes: postData.notes || null,
+      media_asset_id: postData.mediaAssetId ?? null,
     }
 
     if (modalMode === "create") {
@@ -179,6 +185,8 @@ function DashboardContent() {
         status: postData.status,
         scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
+        media_asset_id: postData.mediaAssetId ?? null,
+        media_asset: postData.mediaUrl ? { public_url: postData.mediaUrl } : null,
       }
       setPosts((prev) => [...prev, { ...toCalendarPost(tempRaw), id: tempId }])
       try {
@@ -201,6 +209,8 @@ function DashboardContent() {
         status: postData.status,
         scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
+        media_asset_id: postData.mediaAssetId ?? null,
+        media_asset: postData.mediaUrl ? { public_url: postData.mediaUrl } : null,
       }
       setPosts((prev) => prev.map((p) => (p.id === postData.id ? toCalendarPost(tempRaw) : p)))
       try {

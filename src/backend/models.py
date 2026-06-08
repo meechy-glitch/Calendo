@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Date, ForeignKey, Enum
+from sqlalchemy import BigInteger, Boolean, Column, Integer, String, Text, DateTime, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from src.backend.database import Base
 
@@ -18,6 +18,26 @@ class StatusEnum(str, enum.Enum):
     published = "published"
 
 
+class MediaAsset(Base):
+    __tablename__ = "media_asset"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    storage_key = Column(Text, nullable=False)
+    provider = Column(String(20), default="r2", nullable=False)
+    public_url = Column(Text, nullable=True)
+    original_filename = Column(String(255), nullable=True)
+    mime_type = Column(String(100), nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    status = Column(String(20), default="uploaded", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    user = relationship("User", back_populates="media_assets")
+    posts = relationship("Post", back_populates="media_asset")
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -30,6 +50,7 @@ class User(Base):
     posts = relationship("Post", back_populates="user")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
     brand_voice = relationship("BrandVoice", back_populates="user", uselist=False)
+    media_assets = relationship("MediaAsset", back_populates="user")
 
 
 class Post(Base):
@@ -44,10 +65,12 @@ class Post(Base):
     status = Column(Enum(StatusEnum, native_enum=False), default=StatusEnum.draft, nullable=False)
     scheduled_time = Column(String(5), nullable=True)
     notes = Column(String(500), nullable=True)
+    media_asset_id = Column(Integer, ForeignKey("media_asset.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
+    media_asset = relationship("MediaAsset", back_populates="posts")
 
 
 class BrandVoice(Base):

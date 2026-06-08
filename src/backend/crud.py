@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from src.backend import models, schemas
@@ -77,3 +77,46 @@ def delete_post(db: Session, post_id: int, user_id: int) -> str:
     db.delete(db_post)
     db.commit()
     return "deleted"
+
+
+def create_media_asset(
+    db: Session,
+    user_id: int,
+    storage_key: str,
+    public_url: str,
+    original_filename: str,
+    mime_type: str,
+    file_size_bytes: int,
+) -> models.MediaAsset:
+    asset = models.MediaAsset(
+        user_id=user_id,
+        storage_key=storage_key,
+        public_url=public_url,
+        original_filename=original_filename,
+        mime_type=mime_type,
+        file_size_bytes=file_size_bytes,
+        status="uploaded",
+        created_at=datetime.utcnow(),
+    )
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def get_media_asset(db: Session, asset_id: int, user_id: int) -> Optional[models.MediaAsset]:
+    return (
+        db.query(models.MediaAsset)
+        .filter(models.MediaAsset.id == asset_id, models.MediaAsset.user_id == user_id)
+        .first()
+    )
+
+
+def set_media_asset_ready(db: Session, asset_id: int, user_id: int) -> Optional[models.MediaAsset]:
+    asset = get_media_asset(db, asset_id, user_id)
+    if not asset:
+        return None
+    asset.status = "ready"
+    db.commit()
+    db.refresh(asset)
+    return asset

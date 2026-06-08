@@ -7,6 +7,7 @@ from src.backend.limiter import limiter
 from src.backend.routers import auth as auth_router
 from src.backend.routers import posts as posts_router
 from src.backend.routers import ai as ai_router
+from src.backend.routers import media as media_router
 
 app = FastAPI(title="Calendo API", version="1.0.0")
 app.state.limiter = limiter
@@ -31,6 +32,7 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(posts_router.router)
 app.include_router(ai_router.router)
+app.include_router(media_router.router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

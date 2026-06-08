@@ -32,6 +32,37 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class PresignRequest(BaseModel):
+    filename: str
+    content_type: str
+    size_bytes: int
+
+
+class PresignResponse(BaseModel):
+    upload_url: str
+    media_asset_id: int
+    storage_key: str
+    public_url: str
+    expires_in: int
+
+
+class ConfirmRequest(BaseModel):
+    media_asset_id: int
+
+
+class MediaAssetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    storage_key: str
+    public_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    status: str
+    created_at: datetime
+
+
 class PostCreate(BaseModel):
     title: str
     caption: Optional[str] = None
@@ -40,6 +71,7 @@ class PostCreate(BaseModel):
     status: StatusEnum = StatusEnum.draft
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
+    media_asset_id: Optional[int] = None
 
 
 class PostUpdate(BaseModel):
@@ -50,6 +82,7 @@ class PostUpdate(BaseModel):
     status: Optional[StatusEnum] = None
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
+    media_asset_id: Optional[int] = None
 
 
 class BrandVoiceUpsert(BaseModel):
@@ -81,5 +114,7 @@ class PostResponse(BaseModel):
     status: StatusEnum
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
+    media_asset_id: Optional[int] = None
+    media_asset: Optional[MediaAssetResponse] = None
     created_at: datetime
     updated_at: datetime
