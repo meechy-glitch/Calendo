@@ -7,7 +7,7 @@ const PLATFORM_COLORS = {
 } as const
 
 type Platform = keyof typeof PLATFORM_COLORS
-type PostStatus = "draft" | "scheduled" | "published"
+type PostStatus = "draft" | "scheduled" | "published" | "ready" | "posted" | "skipped"
 
 interface SummaryPost {
   platform: Platform

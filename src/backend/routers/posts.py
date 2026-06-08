@@ -14,10 +14,20 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 @router.get("", response_model=list[schemas.PostResponse])
 def list_posts(
     month: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    return crud.get_posts(db, current_user.id, month)
+    return crud.get_posts(db, current_user.id, month, status)
+
+
+# IMPORTANT: /ready-queue must be registered before /{post_id} to avoid routing conflict
+@router.get("/ready-queue", response_model=list[schemas.PostResponse])
+def ready_queue(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return crud.get_posts(db, current_user.id, status="ready")
 
 
 @router.post("", status_code=201, response_model=schemas.PostResponse)

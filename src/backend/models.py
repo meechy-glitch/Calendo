@@ -19,6 +19,9 @@ class StatusEnum(str, enum.Enum):
     draft = "draft"
     scheduled = "scheduled"
     published = "published"
+    ready = "ready"
+    posted = "posted"
+    skipped = "skipped"
 
 
 class MediaAsset(Base):
@@ -62,6 +65,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    lead_reminders_enabled = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -83,6 +87,11 @@ class Post(Base):
     status = Column(Enum(StatusEnum, native_enum=False), default=StatusEnum.draft, nullable=False)
     scheduled_time = Column(String(5), nullable=True)
     notes = Column(String(500), nullable=True)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+    lead_notified_at = Column(DateTime(timezone=True), nullable=True)
+    posted_at = Column(DateTime(timezone=True), nullable=True)
+    posted_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

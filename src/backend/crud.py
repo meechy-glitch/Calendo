@@ -1,8 +1,20 @@
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Optional, List
 from sqlalchemy.orm import Session, joinedload
 from src.backend import models, schemas
 from src.backend.auth import hash_password
+
+
+def _compute_scheduled_at(scheduled_date: date, scheduled_time: Optional[str], tz_name: str = "UTC") -> datetime:
+    t = time.fromisoformat(scheduled_time) if scheduled_time else time(9, 0)
+    naive_dt = datetime.combine(scheduled_date, t)
+    try:
+        zone = ZoneInfo(tz_name if tz_name else "UTC")
+        aware_dt = naive_dt.replace(tzinfo=zone)
+        return aware_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    except (ZoneInfoNotFoundError, Exception):
+        return naive_dt
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -27,7 +39,7 @@ def _post_query(db: Session):
 
 
 def get_posts(
-    db: Session, user_id: int, month: Optional[str] = None
+    db: Session, user_id: int, month: Optional[str] = None, status: Optional[str] = None
 ) -> List[models.Post]:
     query = _post_query(db).filter(models.Post.user_id == user_id)
     if month:
@@ -41,13 +53,18 @@ def get_posts(
             models.Post.scheduled_date >= start,
             models.Post.scheduled_date < end,
         )
+    if status:
+        query = query.filter(models.Post.status == status)
     return query.all()
 
 
 def create_post(
     db: Session, post: schemas.PostCreate, user_id: int
 ) -> models.Post:
-    post_data = post.model_dump(exclude={"media_ids"})
+    post_data = post.model_dump(exclude={"media_ids", "timezone"})
+    post_data["scheduled_at"] = _compute_scheduled_at(
+        post.scheduled_date, post.scheduled_time, post.timezone or "UTC"
+    )
     db_post = models.Post(**post_data, user_id=user_id)
     db.add(db_post)
     db.flush()  # get id before inserting post_media
@@ -75,9 +92,16 @@ def update_post(
     if db_post.user_id != user_id:
         return "forbidden"
 
-    update_data = post_update.model_dump(exclude_unset=True, exclude={"media_ids"})
+    update_data = post_update.model_dump(exclude_unset=True, exclude={"media_ids", "timezone"})
     for key, value in update_data.items():
         setattr(db_post, key, value)
+
+    # Recompute scheduled_at if date or time changed
+    new_date = post_update.scheduled_date or db_post.scheduled_date
+    new_time = update_data.get("scheduled_time", db_post.scheduled_time)
+    tz = post_update.timezone or "UTC"
+    if post_update.scheduled_date is not None or "scheduled_time" in update_data:
+        db_post.scheduled_at = _compute_scheduled_at(new_date, new_time, tz)
 
     if post_update.media_ids is not None:
         # Replace all media associations

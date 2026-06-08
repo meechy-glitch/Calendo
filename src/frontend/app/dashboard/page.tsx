@@ -16,6 +16,8 @@ import { AnalyticsSummary } from "@/components/AnalyticsSummary"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { ChatPanel } from "@/components/ChatPanel"
 import { BrandVoiceSettings } from "@/components/BrandVoiceSettings"
+import { ReadyQueue } from "@/components/ReadyQueue"
+import { NotificationSettings } from "@/components/NotificationSettings"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
 
@@ -115,6 +117,9 @@ function DashboardContent() {
   const [selectedPost, setSelectedPost] = useState<PostData | undefined>()
   const [chatOpen, setChatOpen] = useState(false)
   const [brandVoiceOpen, setBrandVoiceOpen] = useState(false)
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false)
+  const [readyCount, setReadyCount] = useState(0)
+  const [readyRefreshKey, setReadyRefreshKey] = useState(0)
 
   const isMobile = useMediaQuery("(max-width: 767px)")
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
@@ -133,6 +138,7 @@ function DashboardContent() {
       const month = getMonthStr(currentMonth)
       const data = await getPosts(month)
       setPosts((data || []).map(toCalendarPost))
+      setReadyRefreshKey((k) => k + 1)
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : "Failed to load posts", "error")
     } finally {
@@ -415,6 +421,11 @@ function DashboardContent() {
           </div>
         )}
 
+        <ReadyQueue
+          refreshKey={readyRefreshKey}
+          onCountChange={setReadyCount}
+        />
+
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <PlatformFilter
             activePlatforms={activePlatforms}
@@ -488,6 +499,21 @@ function DashboardContent() {
           Brand Voice
         </button>
         <button
+          onClick={() => setNotifSettingsOpen(true)}
+          className="relative rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+          style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", color: "#888888" }}
+        >
+          Notifications
+          {readyCount > 0 && (
+            <span
+              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
+              style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
+            >
+              {readyCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setChatOpen((v) => !v)}
           className="flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C]"
           style={{
@@ -510,6 +536,11 @@ function DashboardContent() {
       <BrandVoiceSettings
         isOpen={brandVoiceOpen}
         onClose={() => setBrandVoiceOpen(false)}
+      />
+
+      <NotificationSettings
+        isOpen={notifSettingsOpen}
+        onClose={() => setNotifSettingsOpen(false)}
       />
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}

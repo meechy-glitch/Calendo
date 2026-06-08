@@ -59,6 +59,33 @@ export async function deletePost(id: string | number) {
   return handleResponse(res)
 }
 
+export async function getReadyQueue() {
+  const res = await fetch(`${API_BASE}/posts/ready-queue`, { headers: getHeaders() })
+  return handleResponse(res)
+}
+
+export async function getHandoff(id: number) {
+  const res = await fetch(`${API_BASE}/posts/${id}/handoff`, { headers: getHeaders() })
+  return handleResponse(res)
+}
+
+export async function markPosted(id: number, postedUrl?: string) {
+  const res = await fetch(`${API_BASE}/posts/${id}/mark-posted`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ posted_url: postedUrl ?? null }),
+  })
+  return handleResponse(res)
+}
+
+export async function skipPost(id: number) {
+  const res = await fetch(`${API_BASE}/posts/${id}/skip`, {
+    method: "POST",
+    headers: getHeaders(),
+  })
+  return handleResponse(res)
+}
+
 export async function exportCSV(month: string) {
   const token = localStorage.getItem("token")
   const res = await fetch(`${API_BASE}/posts/export/csv?month=${month}`, {

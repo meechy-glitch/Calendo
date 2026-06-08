@@ -17,7 +17,7 @@ import { AIImageCaptionButton } from "@/components/AIImageCaptionButton"
 import { MediaUploader, type MediaItem } from "@/components/MediaUploader"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
-export type PostStatus = "draft" | "scheduled" | "published"
+export type PostStatus = "draft" | "scheduled" | "published" | "ready" | "posted" | "skipped"
 
 const PLATFORM_COLORS = {
   instagram: "#833AB4",

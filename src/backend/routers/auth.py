@@ -11,6 +11,7 @@ from src.backend import schemas, crud, models
 from src.backend.models import PlatformEnum, StatusEnum
 from src.backend.auth import verify_password, create_access_token, hash_password
 from src.backend.config import RESEND_API_KEY, FRONTEND_URL
+from src.backend.auth import get_current_user
 
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -184,3 +185,24 @@ def demo(db: Session = Depends(get_db)):
 
     token, expires_in = create_access_token({"sub": str(db_user.id)})
     return {"access_token": token, "token_type": "bearer", "expires_in": expires_in}
+
+
+@router.get("/me", response_model=schemas.UserMeResponse)
+def get_me(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return current_user
+
+
+@router.patch("/me", response_model=schemas.UserMeResponse)
+def update_me(
+    body: schemas.UserMeUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if body.lead_reminders_enabled is not None:
+        current_user.lead_reminders_enabled = body.lead_reminders_enabled
+    db.commit()
+    db.refresh(current_user)
+    return current_user

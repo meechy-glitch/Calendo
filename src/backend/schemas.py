@@ -78,6 +78,7 @@ class PostCreate(BaseModel):
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
     media_ids: Optional[List[int]] = None
+    timezone: Optional[str] = "UTC"
 
 
 class PostUpdate(BaseModel):
@@ -89,6 +90,7 @@ class PostUpdate(BaseModel):
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
     media_ids: Optional[List[int]] = None
+    timezone: Optional[str] = None
 
 
 class BrandVoiceUpsert(BaseModel):
@@ -117,9 +119,52 @@ class PostResponse(BaseModel):
     caption: Optional[str] = None
     platform: PlatformEnum
     scheduled_date: date
+    scheduled_at: Optional[datetime] = None
     status: StatusEnum
     scheduled_time: Optional[str] = None
     notes: Optional[str] = None
+    notified_at: Optional[datetime] = None
+    lead_notified_at: Optional[datetime] = None
+    posted_at: Optional[datetime] = None
+    posted_url: Optional[str] = None
     media_assets: List[MediaAssetResponse] = []
     created_at: datetime
     updated_at: datetime
+
+
+class MarkPostedBody(BaseModel):
+    posted_url: Optional[str] = None
+
+
+class HandoffMediaItem(BaseModel):
+    public_url: Optional[str] = None
+    download_url: Optional[str] = None
+    mime_type: Optional[str] = None
+
+
+class PlatformAction(BaseModel):
+    type: str
+    url: str
+    note: Optional[str] = None
+
+
+class HandoffResponse(BaseModel):
+    post_id: int
+    caption: Optional[str] = None
+    platform: str
+    media: List[HandoffMediaItem] = []
+    platform_action: PlatformAction
+    status: str
+
+
+class UserMeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    lead_reminders_enabled: bool
+    created_at: datetime
+
+
+class UserMeUpdate(BaseModel):
+    lead_reminders_enabled: Optional[bool] = None

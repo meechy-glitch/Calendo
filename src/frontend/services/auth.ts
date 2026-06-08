@@ -63,3 +63,27 @@ export async function registerApi(email: string, password: string) {
   }
   return res.json()
 }
+
+function authHeaders(): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+export async function getMeApi(): Promise<{ id: number; email: string; lead_reminders_enabled: boolean; created_at: string }> {
+  const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
+  if (!res.ok) throw new Error("Failed to fetch profile")
+  return res.json()
+}
+
+export async function updateMeApi(data: { lead_reminders_enabled?: boolean }) {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Failed to update settings")
+  return res.json()
+}

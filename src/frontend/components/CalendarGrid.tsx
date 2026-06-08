@@ -12,7 +12,7 @@ const PLATFORM_COLORS = {
 } as const
 
 export type Platform = keyof typeof PLATFORM_COLORS
-export type PostStatus = "draft" | "scheduled" | "published"
+export type PostStatus = "draft" | "scheduled" | "published" | "ready" | "posted" | "skipped"
 
 export interface Post {
   id: string

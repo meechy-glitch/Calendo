@@ -19,7 +19,7 @@ export interface MobilePost {
   title: string
   platform: Platform
   date: Date
-  status?: "draft" | "scheduled" | "published"
+  status?: "draft" | "scheduled" | "published" | "ready" | "posted" | "skipped"
   scheduledTime?: string
 }
 
@@ -81,10 +81,13 @@ function getPostPlatformsForDate(posts: MobilePost[], date: Date): Platform[] {
 }
 
 function StatusBadge({ status }: { status: MobilePost["status"] }) {
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; className: string }> = {
     draft: { label: "Draft", className: "bg-[#2A2A2A] text-[#888888] border-[#2A2A2A]" },
     scheduled: { label: "Scheduled", className: "bg-[#E1306C]/20 text-[#E1306C] border-[#E1306C]/30" },
     published: { label: "Published", className: "bg-green-500/20 text-green-400 border-green-500/30" },
+    ready: { label: "Ready", className: "bg-[#E1306C]/20 text-[#E1306C] border-[#E1306C]/30" },
+    posted: { label: "Posted", className: "bg-green-500/20 text-green-400 border-green-500/30" },
+    skipped: { label: "Skipped", className: "bg-[#2A2A2A] text-[#888888] border-[#2A2A2A]" },
   }
   const config = statusConfig[status || "draft"]
   return (
