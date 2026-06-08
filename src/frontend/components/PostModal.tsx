@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { AICaptionButton } from "@/components/AICaptionButton"
+import { AIImageCaptionButton } from "@/components/AIImageCaptionButton"
 import { MediaUploader } from "@/components/MediaUploader"
 
 export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
@@ -258,12 +259,28 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
               style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
             />
             {!isPublished && (
-              <AICaptionButton
-                platform={mode === "create" ? selectedPlatforms[0] : platform}
-                idea={title.trim() || caption.trim()}
-                disabled={isPublished}
-                onSelectCaption={setCaption}
-              />
+              mediaAssetId ? (
+                <AIImageCaptionButton
+                  mediaAssetId={mediaAssetId}
+                  platform={mode === "create" ? selectedPlatforms[0] : platform}
+                  disabled={isPublished}
+                  onSelectCaption={setCaption}
+                  onSelectPlatform={(p) => {
+                    if (mode === "create") {
+                      setSelectedPlatforms([p as Platform])
+                    } else {
+                      setPlatform(p as Platform)
+                    }
+                  }}
+                />
+              ) : (
+                <AICaptionButton
+                  platform={mode === "create" ? selectedPlatforms[0] : platform}
+                  idea={title.trim() || caption.trim()}
+                  disabled={isPublished}
+                  onSelectCaption={setCaption}
+                />
+              )
             )}
             {captionOverLimit && restrictivePlatform && (
               <p className="text-xs" style={{ color: "#E1306C" }}>

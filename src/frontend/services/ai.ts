@@ -92,3 +92,15 @@ export async function upsertBrandVoice(data: {
   })
   return handleResponse(res)
 }
+
+export async function captionFromImage(
+  mediaAssetId: number,
+  platform?: string,
+): Promise<{ suggested_platform: string; captions: string[]; alt_text: string }> {
+  const res = await fetch(`${API_BASE}/ai/caption-from-image`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ media_asset_id: mediaAssetId, platform: platform ?? null }),
+  })
+  return handleResponse(res)
+}

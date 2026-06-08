@@ -16,3 +16,4 @@ pydantic[email]==2.7.1
 resend==2.30.1
 openai>=1.30.0
 boto3>=1.34.0
+Pillow>=10.0.0

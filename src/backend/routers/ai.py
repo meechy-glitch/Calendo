@@ -1,4 +1,6 @@
+import base64
 import json
+import boto3
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, field_validator, model_validator
@@ -7,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from src.backend import crud, models, schemas
 from src.backend.auth import get_current_user
-from src.backend.config import GROQ_API_KEY
+from src.backend.config import GROQ_API_KEY, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
 from src.backend.database import get_db
 from src.backend.limiter import limiter
 
@@ -261,6 +263,11 @@ class ChatRequest(BaseModel):
     timezone: Optional[str] = "UTC"
 
 
+class CaptionFromImageRequest(BaseModel):
+    media_asset_id: int
+    platform: Optional[str] = None
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 def _require_groq() -> None:
@@ -282,6 +289,28 @@ def _get_brand_voice_text(db: Session, user_id: int) -> str:
     if bv.sample_posts:
         parts.append(f"Sample posts: {bv.sample_posts}")
     return "\n\nBrand voice:\n" + "\n".join(parts) if parts else ""
+
+
+def _downscale_image(image_bytes: bytes, mime_type: Optional[str]) -> tuple[bytes, str]:
+    from PIL import Image
+    import io
+    img = Image.open(io.BytesIO(image_bytes))
+    w, h = img.size
+    long_edge = max(w, h)
+    if long_edge > 1568:
+        scale = 1568 / long_edge
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    out_fmt = "JPEG"
+    out_mime = "image/jpeg"
+    if mime_type == "image/png":
+        out_fmt, out_mime = "PNG", "image/png"
+    elif mime_type == "image/webp":
+        out_fmt, out_mime = "WEBP", "image/webp"
+    if img.mode in ("RGBA", "P") and out_fmt == "JPEG":
+        img = img.convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format=out_fmt)
+    return buf.getvalue(), out_mime
 
 
 async def _execute_tool(
@@ -651,3 +680,99 @@ async def chat(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM error: {e}")
     return {"assistant_reply": reply, "changes": changes}
+
+
+@router.post("/caption-from-image")
+@limiter.limit("15/hour")
+async def caption_from_image(
+    request: Request,
+    body: CaptionFromImageRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+) -> dict:
+    _require_groq()
+    if body.platform and body.platform not in VALID_PLATFORMS:
+        raise HTTPException(status_code=400, detail=f"Unknown platform: {body.platform}")
+
+    asset = db.query(models.MediaAsset).filter(
+        models.MediaAsset.id == body.media_asset_id,
+        models.MediaAsset.user_id == current_user.id,
+    ).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+
+    try:
+        r2 = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name="auto",
+        )
+        obj = r2.get_object(Bucket=R2_BUCKET, Key=asset.storage_key)
+        image_bytes = obj["Body"].read()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image from storage: {exc}")
+
+    try:
+        image_bytes, out_mime = _downscale_image(image_bytes, asset.mime_type)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not process image: {exc}")
+
+    b64 = base64.b64encode(image_bytes).decode()
+    data_url = f"data:{out_mime};base64,{b64}"
+
+    bv_text = _get_brand_voice_text(db, current_user.id)
+    platform_hint = f" for {body.platform}" if body.platform else ""
+
+    system = (
+        "You are an expert social media copywriter with vision capabilities.\n"
+        "Analyze the attached image and write 3 captions.\n"
+        "Respond ONLY with valid JSON, no prose, no markdown fences:\n"
+        '{"suggested_platform":"instagram|x|tiktok|linkedin",'
+        '"captions":["caption1","caption2","caption3"],'
+        '"alt_text":"short accessibility description"}'
+        f"{bv_text}"
+    )
+    messages = [
+        {"role": "system", "content": system},
+        {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": data_url}},
+                {"type": "text", "text": f"Write 3 captions for this image{platform_hint}. Return JSON only."},
+            ],
+        },
+    ]
+
+    from src.backend import llm
+    try:
+        result = await llm.complete(messages, max_tokens=1024)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"LLM error: {exc}")
+
+    text = result["text"] or ""
+    if "```" in text:
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    text = text.strip()
+
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        parsed = {}
+
+    suggested = parsed.get("suggested_platform", "")
+    if suggested not in VALID_PLATFORMS:
+        suggested = body.platform or "instagram"
+
+    captions = parsed.get("captions", [])
+    if not isinstance(captions, list):
+        captions = []
+
+    return {
+        "suggested_platform": suggested,
+        "captions": captions[:3],
+        "alt_text": parsed.get("alt_text", ""),
+    }
