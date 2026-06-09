@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { CalendarIcon, Info, Lock } from "lucide-react"
+import { CalendarIcon, Info, Lock, Mic, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
+import { transcribeAudio } from "@/services/ai"
 import { AICaptionButton } from "@/components/AICaptionButton"
 import { AIImageCaptionButton } from "@/components/AIImageCaptionButton"
 import { MediaUploader, type MediaItem } from "@/components/MediaUploader"
@@ -133,6 +135,52 @@ function VideoSpecWarnings({
 export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete, onClose }: PostModalProps) {
   const isMobile = useMediaQuery("(max-width: 767px)")
   const isPublished = mode === "edit" && post?.status === "published"
+
+  const { transcript, isListening, supported, start, stop } = useSpeechRecognition()
+  const [isRecordingFallback, setIsRecordingFallback] = React.useState(false)
+  const [transcribing, setTranscribing] = React.useState(false)
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null)
+  const chunksRef = React.useRef<Blob[]>([])
+
+  const canFallback = typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined"
+  const showMicButton = supported || canFallback
+  const isActivelyRecording = isListening || isRecordingFallback
+
+  React.useEffect(() => {
+    if (transcript) setTitle(transcript)
+  }, [transcript])
+
+  const handleMicClick = async () => {
+    if (supported) {
+      isListening ? stop() : start()
+      return
+    }
+    if (isRecordingFallback) {
+      mediaRecorderRef.current?.stop()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setIsRecordingFallback(false)
+        setTranscribing(true)
+        try {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" })
+          const result = await transcribeAudio(blob)
+          setTitle(result.text)
+        } catch { /* silently fail */ }
+        finally { setTranscribing(false) }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsRecordingFallback(true)
+    } catch { /* mic permission denied */ }
+  }
+
   const [title, setTitle] = React.useState("")
   const [caption, setCaption] = React.useState("")
   const [platform, setPlatform] = React.useState<Platform>("instagram")
@@ -258,15 +306,29 @@ export function PostModal({ isOpen, mode, post, scheduledDate, onSave, onDelete,
             <Label htmlFor="title" style={{ color: "#F5F5F5" }}>
               Title <span style={{ color: "#E1306C" }}>*</span>
             </Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter post title"
-              disabled={isPublished}
-              className="border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter post title"
+                disabled={isPublished}
+                className="flex-1 border-[#2A2A2A] focus-visible:ring-[#E1306C]/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ backgroundColor: "#0F0F0F", color: "#F5F5F5" }}
+              />
+              {showMicButton && !isPublished && (
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  disabled={transcribing}
+                  className={`flex-shrink-0 rounded border p-1.5 transition-colors disabled:opacity-40${isActivelyRecording ? " animate-pulse border-[#E1306C]" : " border-[#2A2A2A] hover:border-[#E1306C]"}`}
+                  style={{ backgroundColor: "#0F0F0F", color: isActivelyRecording ? "#E1306C" : "#888888" }}
+                  aria-label={isActivelyRecording ? "Stop recording" : "Record idea"}
+                >
+                  {transcribing ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

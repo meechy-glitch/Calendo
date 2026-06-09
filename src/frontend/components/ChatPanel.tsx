@@ -1,7 +1,8 @@
 "use client"
 import * as React from "react"
-import { X, Send, Bot } from "lucide-react"
-import { sendChat, type ChatMessage } from "@/services/ai"
+import { X, Send, Bot, Mic, Loader2 } from "lucide-react"
+import { sendChat, transcribeAudio, type ChatMessage } from "@/services/ai"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
 interface ChatPanelProps {
   onClose: () => void
@@ -14,6 +15,51 @@ export function ChatPanel({ onClose, onChanges }: ChatPanelProps) {
   const [loading, setLoading] = React.useState(false)
   const bottomRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  const { transcript, isListening, supported, start, stop } = useSpeechRecognition()
+  const [isRecordingFallback, setIsRecordingFallback] = React.useState(false)
+  const [transcribing, setTranscribing] = React.useState(false)
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null)
+  const chunksRef = React.useRef<Blob[]>([])
+
+  const canFallback = typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined"
+  const showMicButton = supported || canFallback
+  const isActivelyRecording = isListening || isRecordingFallback
+
+  React.useEffect(() => {
+    if (transcript) setInput(transcript)
+  }, [transcript])
+
+  const handleMicClick = async () => {
+    if (supported) {
+      isListening ? stop() : start()
+      return
+    }
+    if (isRecordingFallback) {
+      mediaRecorderRef.current?.stop()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setIsRecordingFallback(false)
+        setTranscribing(true)
+        try {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" })
+          const result = await transcribeAudio(blob)
+          setInput(result.text)
+        } catch { /* silently fail — user can type manually */ }
+        finally { setTranscribing(false) }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsRecordingFallback(true)
+    } catch { /* mic permission denied */ }
+  }
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -157,6 +203,18 @@ export function ChatPanel({ onClose, onChanges }: ChatPanelProps) {
             className="flex-1 resize-none bg-transparent text-xs outline-none placeholder:text-[#555555]"
             style={{ color: "#F5F5F5", maxHeight: "80px" }}
           />
+          {showMicButton && (
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={transcribing}
+              className={`flex-shrink-0 rounded p-1 transition-colors disabled:opacity-40${isActivelyRecording ? " animate-pulse" : ""}`}
+              style={{ color: isActivelyRecording ? "#E1306C" : "#555555" }}
+              aria-label={isActivelyRecording ? "Stop recording" : "Voice input"}
+            >
+              {transcribing ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSend}

@@ -93,6 +93,18 @@ export async function upsertBrandVoice(data: {
   return handleResponse(res)
 }
 
+export async function transcribeAudio(audioBlob: Blob): Promise<{ text: string }> {
+  const token = localStorage.getItem("token")
+  const formData = new FormData()
+  formData.append("audio", audioBlob, "recording.webm")
+  const res = await fetch(`${API_BASE}/ai/transcribe`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+  return handleResponse(res)
+}
+
 export async function captionFromImage(
   mediaAssetId: number,
   platform?: string,

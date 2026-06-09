@@ -4,7 +4,7 @@ import boto3
 from datetime import date, datetime
 from typing import Optional, Union
 from pydantic import BaseModel, field_validator, model_validator
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 
 from src.backend import crud, models, schemas
@@ -680,6 +680,33 @@ async def chat(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM error: {e}")
     return {"assistant_reply": reply, "changes": changes}
+
+
+@router.post("/transcribe")
+@limiter.limit("10/hour")
+async def transcribe_audio(
+    request: Request,
+    audio: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+) -> dict:
+    import io
+    _require_groq()
+    MAX_SIZE = 5 * 1024 * 1024
+    content = await audio.read(MAX_SIZE + 1)
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Audio file too large (max 5 MB)")
+    from src.backend import llm
+    client = llm._get_groq_client()
+    filename = audio.filename or "recording.webm"
+    mime = audio.content_type or "audio/webm"
+    try:
+        result = await client.audio.transcriptions.create(
+            model="whisper-large-v3-turbo",
+            file=(filename, io.BytesIO(content), mime),
+        )
+        return {"text": result.text}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Transcription error: {exc}")
 
 
 @router.post("/caption-from-image")
