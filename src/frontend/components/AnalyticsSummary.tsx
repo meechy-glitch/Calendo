@@ -26,32 +26,48 @@ const PLATFORM_LABELS: Record<Platform, string> = {
 }
 
 export function AnalyticsSummary({ posts }: AnalyticsSummaryProps) {
-  const platformCounts = (["instagram", "x", "tiktok", "linkedin"] as Platform[]).map(
-    (p) => ({ platform: p, count: posts.filter((post) => post.platform === p).length })
-  )
-
-  const published = posts.filter((p) => p.status === "published").length
   const scheduled = posts.filter((p) => p.status === "scheduled").length
   const draft = posts.filter((p) => p.status === "draft").length
+  const total = posts.length
+
+  const platformCounts = (["instagram", "x", "tiktok", "linkedin"] as Platform[])
+    .map((p) => ({ platform: p, count: posts.filter((post) => post.platform === p).length }))
+    .filter(({ count }) => count > 0)
 
   return (
-    <div className="mb-6 rounded-lg border border-[#2A2A2A] px-4 py-3" style={{ backgroundColor: "#1A1A1A" }}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {platformCounts.map(({ platform, count }) => (
-          <span key={platform} className="flex items-center gap-1.5 text-sm" style={{ color: "#F5F5F5" }}>
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
-            {PLATFORM_LABELS[platform]}: {count}
-          </span>
+    <div className="mb-6 space-y-3">
+      {/* 3 stat tiles */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Scheduled", value: scheduled },
+          { label: "Drafts", value: draft },
+          { label: "This month", value: total },
+        ].map(({ label, value }) => (
+          <div
+            key={label}
+            className="rounded-lg border px-4 py-3"
+            style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
+          >
+            <p className="text-xl font-semibold" style={{ color: "#F5F5F5" }}>{value}</p>
+            <p className="text-xs" style={{ color: "#888888" }}>{label}</p>
+          </div>
         ))}
-        <span className="text-sm" style={{ color: "#888888" }}>· Total: {posts.length}</span>
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" style={{ color: "#888888" }}>
-        <span>Published: {published}</span>
-        <span>·</span>
-        <span>Scheduled: {scheduled}</span>
-        <span>·</span>
-        <span>Draft: {draft}</span>
-      </div>
+
+      {/* Compact platform breakdown — only platforms with posts */}
+      {platformCounts.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
+          {platformCounts.map(({ platform, count }) => (
+            <span key={platform} className="flex items-center gap-1.5 text-xs" style={{ color: "#888888" }}>
+              <span
+                className="inline-block h-2 w-2 flex-shrink-0 rounded-full"
+                style={{ backgroundColor: PLATFORM_COLORS[platform] }}
+              />
+              {PLATFORM_LABELS[platform]}: {count}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { CalendoNavbar } from "@/components/Navbar"
+import { AppShell, type AppTab } from "@/components/AppShell"
 import { CalendoCalendar, type Post, type Platform, type PostStatus } from "@/components/CalendarGrid"
 import { CalendarMobile, type MobilePost } from "@/components/CalendarMobile"
 import { PlatformFilter } from "@/components/PlatformFilter"
@@ -20,20 +20,6 @@ import { ReadyQueue } from "@/components/ReadyQueue"
 import { NotificationSettings } from "@/components/NotificationSettings"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
-
-const PLATFORM_COLORS: Record<Platform, string> = {
-  instagram: "#833AB4",
-  x: "#888888",
-  tiktok: "#FE2C55",
-  linkedin: "#0A66C2",
-}
-
-const PLATFORM_LABELS: Record<Platform, string> = {
-  instagram: "Instagram",
-  x: "X",
-  tiktok: "TikTok",
-  linkedin: "LinkedIn",
-}
 
 interface ApiMediaAsset {
   id: number
@@ -106,6 +92,7 @@ function toLocalDateString(date: Date): string {
 
 function DashboardContent() {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState<AppTab>("today")
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [posts, setPosts] = useState<CalendarPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -115,16 +102,15 @@ function DashboardContent() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>()
   const [selectedPost, setSelectedPost] = useState<PostData | undefined>()
-  const [chatOpen, setChatOpen] = useState(false)
   const [brandVoiceOpen, setBrandVoiceOpen] = useState(false)
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false)
   const [readyCount, setReadyCount] = useState(0)
   const [readyRefreshKey, setReadyRefreshKey] = useState(0)
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
 
   const isMobile = useMediaQuery("(max-width: 767px)")
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
   const isDemo = userEmail === "demo@calendo.app"
-  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type })
@@ -149,6 +135,12 @@ function DashboardContent() {
   useEffect(() => {
     fetchPosts()
   }, [fetchPosts])
+
+  // Fetch posts when switching to calendar tab
+  useEffect(() => {
+    if (activeTab === "calendar") fetchPosts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date)
@@ -225,27 +217,17 @@ function DashboardContent() {
       const body = { ...baseBody, platform: postData.platform }
       const tempId = `temp-${Date.now()}`
       const tempRaw: ApiPost = {
-        id: 0,
-        title: postData.title,
-        caption: postData.caption || null,
+        id: 0, title: postData.title, caption: postData.caption || null,
         platform: postData.platform,
         scheduled_date: toLocalDateString(postData.scheduledDate),
-        status: postData.status,
-        scheduled_time: postData.scheduledTime || null,
+        status: postData.status, scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
         media_assets: (postData.mediaItems || []).map((m) => ({
-          id: m.asset.id,
-          public_url: m.asset.public_url,
-          thumbnail_key: m.asset.thumbnail_key,
-          mime_type: m.asset.mime_type,
-          storage_key: m.asset.storage_key,
-          file_size_bytes: m.asset.file_size_bytes,
-          width: m.asset.width,
-          height: m.asset.height,
-          duration_seconds: m.asset.duration_seconds,
-          status: m.asset.status,
-          created_at: m.asset.created_at,
-          spec_warnings: m.asset.spec_warnings,
+          id: m.asset.id, public_url: m.asset.public_url, thumbnail_key: m.asset.thumbnail_key,
+          mime_type: m.asset.mime_type, storage_key: m.asset.storage_key,
+          file_size_bytes: m.asset.file_size_bytes, width: m.asset.width, height: m.asset.height,
+          duration_seconds: m.asset.duration_seconds, status: m.asset.status,
+          created_at: m.asset.created_at, spec_warnings: m.asset.spec_warnings,
         })),
       }
       setPosts((prev) => [...prev, { ...toCalendarPost(tempRaw), id: tempId }])
@@ -261,27 +243,17 @@ function DashboardContent() {
       const body = { ...baseBody, platform: postData.platform }
       const originalPost = posts.find((p) => p.id === postData.id)
       const tempRaw: ApiPost = {
-        id: parseInt(postData.id),
-        title: postData.title,
-        caption: postData.caption || null,
+        id: parseInt(postData.id), title: postData.title, caption: postData.caption || null,
         platform: postData.platform,
         scheduled_date: toLocalDateString(postData.scheduledDate),
-        status: postData.status,
-        scheduled_time: postData.scheduledTime || null,
+        status: postData.status, scheduled_time: postData.scheduledTime || null,
         notes: postData.notes || null,
         media_assets: (postData.mediaItems || []).map((m) => ({
-          id: m.asset.id,
-          public_url: m.asset.public_url,
-          thumbnail_key: m.asset.thumbnail_key,
-          mime_type: m.asset.mime_type,
-          storage_key: m.asset.storage_key,
-          file_size_bytes: m.asset.file_size_bytes,
-          width: m.asset.width,
-          height: m.asset.height,
-          duration_seconds: m.asset.duration_seconds,
-          status: m.asset.status,
-          created_at: m.asset.created_at,
-          spec_warnings: m.asset.spec_warnings,
+          id: m.asset.id, public_url: m.asset.public_url, thumbnail_key: m.asset.thumbnail_key,
+          mime_type: m.asset.mime_type, storage_key: m.asset.storage_key,
+          file_size_bytes: m.asset.file_size_bytes, width: m.asset.width, height: m.asset.height,
+          duration_seconds: m.asset.duration_seconds, status: m.asset.status,
+          created_at: m.asset.created_at, spec_warnings: m.asset.spec_warnings,
         })),
       }
       setPosts((prev) => prev.map((p) => (p.id === postData.id ? toCalendarPost(tempRaw) : p)))
@@ -313,8 +285,6 @@ function DashboardContent() {
     router.replace("/login")
   }
 
-  const handleToday = () => setCurrentMonth(new Date())
-
   const handlePlatformToggle = (platform: Platform) => {
     setActivePlatforms((prev) =>
       prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
@@ -345,138 +315,190 @@ function DashboardContent() {
 
   const filteredPosts = posts.filter((p) => activePlatforms.includes(p.platform))
 
-  const today = new Date()
-  const isCurrentMonth =
-    currentMonth.getFullYear() === today.getFullYear() &&
-    currentMonth.getMonth() === today.getMonth()
-
-  const todayPosts = posts.filter((p) => isSameDay(p.date, today))
-  const allTodayPublished = todayPosts.length > 0 && todayPosts.every((p) => p.status === "published")
-  const todayPlatforms = [...new Set(todayPosts.map((p) => p.platform))]
-
   return (
-    <div style={{ backgroundColor: "#0F0F0F", minHeight: "100vh" }}>
-      <CalendoNavbar
-        userEmail={userEmail}
-        currentMonth={currentMonth}
-        onLogout={handleLogout}
-        onTodayClick={handleToday}
-        onAddPost={() => handleDateClick(new Date())}
-      />
-
-      <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-16 md:px-6">
-        {isDemo && !demoBannerDismissed && (
-          <div
-            className="mb-4 flex items-center justify-between rounded-md px-4 py-2.5 text-sm"
-            style={{ backgroundColor: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888888" }}
-          >
-            <span>
-              You&apos;re viewing a demo account.{" "}
-              <a href="/register" style={{ color: "#888888", textDecoration: "underline", textUnderlineOffset: "3px" }}>
-                Sign up
-              </a>
-              {" "}to save your own content.
-            </span>
-            <button
-              onClick={() => setDemoBannerDismissed(true)}
-              className="ml-4 flex-shrink-0 leading-none hover:text-[#F5F5F5]"
-              aria-label="Dismiss"
-              style={{ color: "#555555", fontSize: "18px" }}
+    <AppShell
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      readyCount={readyCount}
+      userEmail={userEmail}
+      onAddPost={() => { setActiveTab("calendar"); handleDateClick(new Date()) }}
+    >
+      {/* Today tab */}
+      {activeTab === "today" && (
+        <div className="mx-auto max-w-[800px] px-4 py-6 md:px-6">
+          <ReadyQueue refreshKey={readyRefreshKey} onCountChange={setReadyCount} />
+          {readyCount === 0 && (
+            <div
+              className="rounded-lg border p-10 text-center"
+              style={{ borderColor: "#2A2A2A" }}
             >
-              ×
+              <p className="text-base font-medium" style={{ color: "#F5F5F5" }}>
+                You&apos;re all clear
+              </p>
+              <p className="mt-1 text-sm" style={{ color: "#888888" }}>
+                No posts ready to publish today.
+              </p>
+              <button
+                onClick={() => setActiveTab("calendar")}
+                className="mt-4 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+                style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
+              >
+                Open Calendar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Calendar tab */}
+      {activeTab === "calendar" && (
+        <div className="mx-auto max-w-[1400px] px-4 py-6 md:px-6">
+          {isDemo && !demoBannerDismissed && (
+            <div
+              className="mb-4 flex items-center justify-between rounded-md px-4 py-2.5 text-sm"
+              style={{ backgroundColor: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888888" }}
+            >
+              <span>
+                You&apos;re viewing a demo account.{" "}
+                <a href="/register" style={{ color: "#888888", textDecoration: "underline", textUnderlineOffset: "3px" }}>
+                  Sign up
+                </a>
+                {" "}to save your own content.
+              </span>
+              <button
+                onClick={() => setDemoBannerDismissed(true)}
+                className="ml-4 flex-shrink-0 leading-none hover:text-[#F5F5F5]"
+                aria-label="Dismiss"
+                style={{ color: "#555555", fontSize: "18px" }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <AnalyticsSummary posts={filteredPosts} />
+
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <PlatformFilter
+              activePlatforms={activePlatforms}
+              onToggle={handlePlatformToggle}
+              onSelectAll={() => setActivePlatforms(ALL_PLATFORMS)}
+            />
+            <ExportButton onExport={handleExport} />
+          </div>
+
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : (
+            <>
+              {isMobile ? (
+                <>
+                  <CalendarMobile
+                    posts={filteredPosts}
+                    currentMonth={currentMonth}
+                    onDateClick={handleDateClick}
+                    onPostClick={handlePostClick}
+                    onMonthChange={setCurrentMonth}
+                    onMarkPublished={handleMarkPublished}
+                  />
+                  <div
+                    className="mt-8 border-t pt-4 text-center"
+                    style={{ borderColor: "#1E1E1E" }}
+                  >
+                    <FeedbackButton variant="link" onSubmit={() => {}} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <CalendoCalendar
+                    posts={filteredPosts}
+                    currentMonth={currentMonth}
+                    onDateClick={handleDateClick}
+                    onPostClick={handlePostClick}
+                    onMonthChange={setCurrentMonth}
+                  />
+                  {filteredPosts.length === 0 && (
+                    <div className="mt-4">
+                      <EmptyState />
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Assistant tab */}
+      {activeTab === "assistant" && (
+        <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-56px)]">
+          <ChatPanel onClose={() => setActiveTab("today")} onChanges={fetchPosts} embedded />
+        </div>
+      )}
+
+      {/* Settings tab */}
+      {activeTab === "settings" && (
+        <div className="mx-auto max-w-[640px] space-y-4 px-4 py-8 md:px-6">
+          <h1 className="text-lg font-semibold" style={{ color: "#F5F5F5" }}>Settings</h1>
+
+          <div
+            className="rounded-lg border p-4"
+            style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
+          >
+            <p className="mb-0.5 text-sm font-medium" style={{ color: "#F5F5F5" }}>Brand Voice</p>
+            <p className="mb-3 text-xs" style={{ color: "#888888" }}>
+              Configure the tone and style for AI-generated captions.
+            </p>
+            <button
+              onClick={() => setBrandVoiceOpen(true)}
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+              style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
+            >
+              Edit Brand Voice
             </button>
           </div>
-        )}
 
-        {!isLoading && isCurrentMonth && (
           <div
-            className="mb-6 rounded-lg border-l-4 px-4 py-3 text-sm"
-            style={{
-              backgroundColor: "#1A1A1A",
-              borderLeftColor: "#E1306C",
-              borderTop: "1px solid #2A2A2A",
-              borderRight: "1px solid #2A2A2A",
-              borderBottom: "1px solid #2A2A2A",
-              color: "#F5F5F5",
-            }}
+            className="rounded-lg border p-4"
+            style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
           >
-            {todayPosts.length === 0 ? (
-              "Nothing scheduled for today. Click today's date to add a post."
-            ) : allTodayPublished ? (
-              `All done for today! ${todayPosts.length} post${todayPosts.length !== 1 ? "s" : ""} published ✓`
-            ) : (
-              <span className="flex flex-wrap items-center gap-1">
-                <span>
-                  You have {todayPosts.length} post{todayPosts.length !== 1 ? "s" : ""} going out today —
-                </span>
-                {todayPlatforms.map((platform, i) => (
-                  <span key={platform} className="inline-flex items-center gap-1">
-                    {i > 0 && <span style={{ color: "#888888" }}>·</span>}
-                    <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[platform] }} />
-                    <span>{PLATFORM_LABELS[platform]}</span>
-                  </span>
-                ))}
-              </span>
-            )}
+            <p className="mb-0.5 text-sm font-medium" style={{ color: "#F5F5F5" }}>Notifications</p>
+            <p className="mb-3 text-xs" style={{ color: "#888888" }}>
+              Configure lead-time reminders for scheduled posts.
+            </p>
+            <button
+              onClick={() => setNotifSettingsOpen(true)}
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+              style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
+            >
+              Notification Preferences
+            </button>
           </div>
-        )}
 
-        <ReadyQueue
-          refreshKey={readyRefreshKey}
-          onCountChange={setReadyCount}
-        />
+          <div
+            className="rounded-lg border p-4"
+            style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
+          >
+            <p className="mb-0.5 text-sm font-medium" style={{ color: "#F5F5F5" }}>Feedback</p>
+            <p className="mb-3 text-xs" style={{ color: "#888888" }}>
+              Share your thoughts to help improve Calendo.
+            </p>
+            <FeedbackButton onSubmit={() => {}} />
+          </div>
 
-        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <PlatformFilter
-            activePlatforms={activePlatforms}
-            onToggle={handlePlatformToggle}
-            onSelectAll={() => setActivePlatforms(ALL_PLATFORMS)}
-          />
-          <ExportButton onExport={handleExport} />
+          <div className="pt-2">
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-red-700 hover:text-red-400"
+              style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
+            >
+              Log out
+            </button>
+          </div>
         </div>
+      )}
 
-        {isLoading ? (
-          <LoadingSkeleton />
-        ) : (
-          <>
-            <AnalyticsSummary posts={filteredPosts} />
-            {isMobile ? (
-              <>
-                <CalendarMobile
-                  posts={filteredPosts}
-                  currentMonth={currentMonth}
-                  onDateClick={handleDateClick}
-                  onPostClick={handlePostClick}
-                  onMonthChange={setCurrentMonth}
-                  onMarkPublished={handleMarkPublished}
-                />
-                <div
-                  className="mt-8 border-t pt-4 text-center"
-                  style={{ borderColor: "#1E1E1E" }}
-                >
-                  <FeedbackButton variant="link" onSubmit={() => {}} />
-                </div>
-              </>
-            ) : (
-              <>
-                <CalendoCalendar
-                  posts={filteredPosts}
-                  currentMonth={currentMonth}
-                  onDateClick={handleDateClick}
-                  onPostClick={handlePostClick}
-                  onMonthChange={setCurrentMonth}
-                />
-                {filteredPosts.length === 0 && (
-                  <div className="mt-4">
-                    <EmptyState />
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </main>
-
+      {/* Portals — always mounted */}
       <PostModal
         isOpen={modalOpen}
         mode={modalMode}
@@ -486,65 +508,10 @@ function DashboardContent() {
         onDelete={modalMode === "edit" ? handleDelete : undefined}
         onClose={() => setModalOpen(false)}
       />
-
-      {!isMobile && <FeedbackButton onSubmit={() => {}} />}
-
-      {/* AI floating buttons */}
-      <div className="fixed bottom-6 left-4 z-40 flex flex-col items-start gap-2">
-        <button
-          onClick={() => setBrandVoiceOpen(true)}
-          className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
-          style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", color: "#888888" }}
-        >
-          Brand Voice
-        </button>
-        <button
-          onClick={() => setNotifSettingsOpen(true)}
-          className="relative rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
-          style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", color: "#888888" }}
-        >
-          Notifications
-          {readyCount > 0 && (
-            <span
-              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
-              style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
-            >
-              {readyCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setChatOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C]"
-          style={{
-            backgroundColor: chatOpen ? "#E1306C" : "#1A1A1A",
-            borderColor: chatOpen ? "#E1306C" : "#2A2A2A",
-            color: chatOpen ? "#F5F5F5" : "#888888",
-          }}
-        >
-          ✨ AI Assistant
-        </button>
-      </div>
-
-      {chatOpen && (
-        <ChatPanel
-          onClose={() => setChatOpen(false)}
-          onChanges={fetchPosts}
-        />
-      )}
-
-      <BrandVoiceSettings
-        isOpen={brandVoiceOpen}
-        onClose={() => setBrandVoiceOpen(false)}
-      />
-
-      <NotificationSettings
-        isOpen={notifSettingsOpen}
-        onClose={() => setNotifSettingsOpen(false)}
-      />
-
+      <BrandVoiceSettings isOpen={brandVoiceOpen} onClose={() => setBrandVoiceOpen(false)} />
+      <NotificationSettings isOpen={notifSettingsOpen} onClose={() => setNotifSettingsOpen(false)} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
-    </div>
+    </AppShell>
   )
 }
 

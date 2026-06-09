@@ -7,9 +7,10 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 interface ChatPanelProps {
   onClose: () => void
   onChanges: () => void
+  embedded?: boolean
 }
 
-export function ChatPanel({ onClose, onChanges }: ChatPanelProps) {
+export function ChatPanel({ onClose, onChanges, embedded }: ChatPanelProps) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([])
   const [input, setInput] = React.useState("")
   const [loading, setLoading] = React.useState(false)
@@ -104,12 +105,18 @@ export function ChatPanel({ onClose, onChanges }: ChatPanelProps) {
 
   return (
     <div
-      className="fixed bottom-0 right-4 z-50 flex w-[360px] flex-col rounded-t-xl border shadow-2xl"
-      style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", height: "500px" }}
+      className={embedded
+        ? "flex h-full flex-col"
+        : "fixed bottom-0 right-4 z-50 flex w-[360px] flex-col rounded-t-xl border shadow-2xl"
+      }
+      style={embedded
+        ? { backgroundColor: "#1A1A1A" }
+        : { backgroundColor: "#1A1A1A", borderColor: "#2A2A2A", height: "500px" }
+      }
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between border-b px-4 py-3 flex-shrink-0"
+        className="flex flex-shrink-0 items-center justify-between border-b px-4 py-3"
         style={{ borderColor: "#2A2A2A" }}
       >
         <div className="flex items-center gap-2">
@@ -118,14 +125,16 @@ export function ChatPanel({ onClose, onChanges }: ChatPanelProps) {
             Calendo AI
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded p-1 transition-colors hover:bg-[#2A2A2A]"
-          style={{ color: "#888888" }}
-          aria-label="Close"
-        >
-          <X size={14} />
-        </button>
+        {!embedded && (
+          <button
+            onClick={onClose}
+            className="rounded p-1 transition-colors hover:bg-[#2A2A2A]"
+            style={{ color: "#888888" }}
+            aria-label="Close"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Messages */}

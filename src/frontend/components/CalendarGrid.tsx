@@ -145,7 +145,7 @@ function DayCell({
         !isCurrentMonth && "opacity-40"
       )}
     >
-      <span className={cn("calendo-text flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium", isToday && "calendo-accent text-white")}>
+      <span className={cn("calendo-text flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium", isToday && "border border-[#E1306C]")}>
         {date.getDate()}
       </span>
       <div className="flex flex-1 flex-col gap-1 overflow-hidden">
