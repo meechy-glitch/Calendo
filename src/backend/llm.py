@@ -22,6 +22,7 @@ async def complete(
     tools: list[dict] | None = None,
     model: str | None = None,
     max_tokens: int = 1024,
+    tool_choice: str = "auto",
 ) -> dict:
     client = _get_groq_client()
     m = model or LLM_MODEL
@@ -32,7 +33,7 @@ async def complete(
     }
     if tools:
         kwargs["tools"] = tools
-        kwargs["tool_choice"] = "auto"
+        kwargs["tool_choice"] = tool_choice
     response = await client.chat.completions.create(**kwargs)
     choice = response.choices[0]
     msg = choice.message

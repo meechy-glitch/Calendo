@@ -12,6 +12,7 @@ import { LoadingSkeleton, EmptyState } from "@/components/EmptyState"
 import { Toast } from "@/components/Toast"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { getPosts, createPost, updatePost, deletePost, exportCSV } from "@/services/posts"
+import { type ChatChange } from "@/services/ai"
 import { AnalyticsSummary } from "@/components/AnalyticsSummary"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { ChatPanel } from "@/components/ChatPanel"
@@ -285,6 +286,30 @@ function DashboardContent() {
     router.replace("/login")
   }
 
+  const handleChatChanges = useCallback(
+    (changes: ChatChange[]) => {
+      const currentMonthStr = getMonthStr(currentMonth)
+      const destMonths = [
+        ...new Set(
+          changes
+            .filter((c) => c.new_date)
+            .map((c) => c.new_date!.slice(0, 7))
+            .filter((m) => m !== currentMonthStr)
+        ),
+      ]
+      if (destMonths.length > 0) {
+        const [year, month] = destMonths[0].split("-").map(Number)
+        const destDate = new Date(year, month - 1, 1)
+        setCurrentMonth(destDate)
+        const label = destDate.toLocaleString("default", { month: "long", year: "numeric" })
+        showToast(`Posts moved to ${label} — switch to Calendar to see them.`, "success")
+      } else {
+        fetchPosts()
+      }
+    },
+    [currentMonth, fetchPosts, showToast]
+  )
+
   const handlePlatformToggle = (platform: Platform) => {
     setActivePlatforms((prev) =>
       prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
@@ -432,7 +457,7 @@ function DashboardContent() {
       {/* Assistant tab */}
       {activeTab === "assistant" && (
         <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-56px)]">
-          <ChatPanel onClose={() => setActiveTab("today")} onChanges={fetchPosts} embedded />
+          <ChatPanel onClose={() => setActiveTab("today")} onChanges={handleChatChanges} embedded />
         </div>
       )}
 

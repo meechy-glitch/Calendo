@@ -148,6 +148,39 @@ _CHAT_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "bulk_reschedule_posts",
+            "description": (
+                "Reschedule multiple posts to new dates in one call. "
+                "Use this whenever moving several posts at once, e.g. 'move June posts to July' "
+                "or 'shift next week to the following week'. "
+                "First call list_posts to get post IDs, then call this with all posts in one shot."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reschedules": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "post_id": {
+                                    "anyOf": [{"type": "integer"}, {"type": "string"}],
+                                    "description": "ID of the post to reschedule",
+                                },
+                                "scheduled_date": {"type": "string", "description": "New date in YYYY-MM-DD format"},
+                                "scheduled_time": {"type": "string", "description": "New time in HH:MM format (optional)"},
+                            },
+                            "required": ["post_id", "scheduled_date"],
+                        },
+                    }
+                },
+                "required": ["reschedules"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "bulk_create_posts",
             "description": "Create multiple posts at once, e.g. to plan a full week.",
             "parameters": {
@@ -227,6 +260,10 @@ class _RescheduleArgs(BaseModel):
             return int(v)
         except (TypeError, ValueError):
             raise ValueError(f"post_id must be an integer, got {v!r}")
+
+
+class _BulkRescheduleArgs(BaseModel):
+    reschedules: list[_RescheduleArgs]
 
 
 class _BulkCreateArgs(BaseModel):
@@ -408,7 +445,10 @@ async def _execute_tool(
             return json.dumps({"error": "Post not found"})
         if result == "forbidden":
             return json.dumps({"error": "Not authorized"})
-        changes.append({"type": "updated", "id": a.post_id})
+        change_entry: dict = {"type": "updated", "id": a.post_id}
+        if a.scheduled_date is not None:
+            change_entry["new_date"] = a.scheduled_date
+        changes.append(change_entry)
         return json.dumps({"updated": {"id": a.post_id}})
 
     if tool_name == "reschedule_post":
@@ -428,8 +468,34 @@ async def _execute_tool(
             return json.dumps({"error": "Post not found"})
         if result == "forbidden":
             return json.dumps({"error": "Not authorized"})
-        changes.append({"type": "updated", "id": a.post_id})
+        changes.append({"type": "updated", "id": a.post_id, "new_date": a.scheduled_date})
         return json.dumps({"rescheduled": {"id": a.post_id, "new_date": a.scheduled_date}})
+
+    if tool_name == "bulk_reschedule_posts":
+        try:
+            a = _BulkRescheduleArgs(**args)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+        rescheduled: list[dict] = []
+        errors: list[dict] = []
+        for item in a.reschedules:
+            try:
+                sched_date = date.fromisoformat(item.scheduled_date)
+            except ValueError as e:
+                errors.append({"post_id": item.post_id, "error": str(e)})
+                continue
+            item_update: dict = {"scheduled_date": sched_date}
+            if item.scheduled_time is not None:
+                item_update["scheduled_time"] = item.scheduled_time
+            result = crud.update_post(db, item.post_id, schemas.PostUpdate(**item_update), user_id)
+            if result == "not_found":
+                errors.append({"post_id": item.post_id, "error": "Post not found"})
+            elif result == "forbidden":
+                errors.append({"post_id": item.post_id, "error": "Not authorized"})
+            else:
+                changes.append({"type": "updated", "id": item.post_id, "new_date": item.scheduled_date})
+                rescheduled.append({"id": item.post_id, "new_date": item.scheduled_date})
+        return json.dumps({"rescheduled": rescheduled, "errors": errors})
 
     if tool_name == "bulk_create_posts":
         try:
@@ -477,6 +543,12 @@ async def _run_chat_loop(
             f"Today is {date.today()}. User's timezone: {timezone}. "
             "Use the provided tools to read and modify the user's posts. "
             "Never expose or assume the user's internal ID. "
+            "CRITICAL: You MUST call a tool for any request to create, update, reschedule, or move posts. "
+            "NEVER claim to have created, updated, or moved posts without first calling the appropriate tool. "
+            "For bulk moves (e.g. 'move June posts to July'): call list_posts first to get IDs and current dates, "
+            "then call bulk_reschedule_posts with all posts in a single call, "
+            "computing the equivalent date in the destination month for each post "
+            "(e.g. June 5 → July 5, June 20 → July 20). "
             "IMPORTANT: After using any tool, always respond in natural, conversational English. "
             "Never output raw JSON, tool results, or structured data directly to the user. "
             "Instead, summarise what you did in plain language, for example: "
@@ -489,8 +561,11 @@ async def _run_chat_loop(
     messages: list[dict] = [system_msg] + messages_in
     changes: list[dict] = []
 
-    for _ in range(MAX_CHAT_ITERATIONS):
-        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048)
+    for i in range(MAX_CHAT_ITERATIONS):
+        # Force a tool call on the first turn so the model cannot hallucinate
+        # a success response without touching the database.
+        tool_choice_mode = "required" if i == 0 else "auto"
+        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice=tool_choice_mode)
 
         if not result["tool_calls"]:
             return result["text"] or "Done.", changes

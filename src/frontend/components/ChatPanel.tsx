@@ -1,12 +1,12 @@
 "use client"
 import * as React from "react"
 import { X, Send, Bot, Mic, Loader2 } from "lucide-react"
-import { sendChat, transcribeAudio, type ChatMessage } from "@/services/ai"
+import { sendChat, transcribeAudio, type ChatMessage, type ChatChange } from "@/services/ai"
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
 interface ChatPanelProps {
   onClose: () => void
-  onChanges: () => void
+  onChanges: (changes: ChatChange[]) => void
   embedded?: boolean
 }
 
@@ -80,7 +80,7 @@ export function ChatPanel({ onClose, onChanges, embedded }: ChatPanelProps) {
       const result = await sendChat(nextMessages)
       setMessages((prev) => [...prev, { role: "assistant", content: result.assistant_reply }])
       if (result.changes.length > 0) {
-        onChanges()
+        onChanges(result.changes)
       }
     } catch (err: unknown) {
       setMessages((prev) => [

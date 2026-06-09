@@ -56,9 +56,15 @@ export interface ChatMessage {
   content: string
 }
 
+export interface ChatChange {
+  type: string
+  id: number
+  new_date?: string
+}
+
 export async function sendChat(
   messages: ChatMessage[],
-): Promise<{ assistant_reply: string; changes: { type: string; id: number }[] }> {
+): Promise<{ assistant_reply: string; changes: ChatChange[] }> {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
   const res = await fetch(`${API_BASE}/ai/chat`, {
     method: "POST",
