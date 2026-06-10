@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label"
 
 interface FeedbackButtonProps {
   onSubmit: (message: string) => void
-  variant?: "floating" | "link"
+  variant?: "link" | "settings"
 }
 
-export function FeedbackButton({ onSubmit, variant = "floating" }: FeedbackButtonProps) {
+export function FeedbackButton({ onSubmit, variant = "settings" }: FeedbackButtonProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [message, setMessage] = React.useState("")
 
@@ -50,18 +50,10 @@ export function FeedbackButton({ onSubmit, variant = "floating" }: FeedbackButto
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 focus:outline-none"
-          style={{ backgroundColor: "#E1306C", color: "#F5F5F5" }}
-          aria-label="Send feedback"
+          className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+          style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
         >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
+          Send Feedback
         </button>
       )}
 

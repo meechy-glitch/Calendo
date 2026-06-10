@@ -596,10 +596,19 @@ async def _run_chat_loop(
             f"Today is {date.today()}. User's timezone: {timezone}. "
             "Use the provided tools to read and modify the user's posts. "
             "Never expose or assume the user's internal ID. "
-            "CRITICAL: You MUST call a tool for any request to create, update, reschedule, or move posts. "
-            "NEVER claim to have created, updated, or moved posts without first calling the appropriate tool. "
-            "For bulk moves (e.g. 'move June posts to July'): call list_posts first to get IDs and current dates, "
-            "then call bulk_reschedule_posts with all posts in a single call, "
+            "CONTENT CREATION RULE: When a user asks you to plan, create, or schedule posts "
+            "but does NOT specify a topic, theme, or actual content direction, you MUST ask "
+            "1-3 concise clarifying questions first — e.g. what topic or theme, what goal or tone, "
+            "whether they have specific ideas. If no platform is specified, ask for it. "
+            "Do NOT call create_post or bulk_create_posts until you have real content direction. "
+            "NEVER create placeholder titles like 'Post 1', 'Post 2', 'Post 3', or posts with "
+            "generic/empty captions. Every post must have a meaningful title and a full caption "
+            "tailored to the platform, using the user's brand voice and the content they described. "
+            "ANTI-HALLUCINATION RULE: You MUST call a tool for any request to create, update, "
+            "reschedule, or move posts. NEVER claim to have created, updated, or moved posts "
+            "unless you actually called the appropriate tool during this turn. "
+            "For bulk moves (e.g. 'move June posts to July'): call list_posts first to get IDs "
+            "and current dates, then call bulk_reschedule_posts with all posts in a single call, "
             "computing the equivalent date in the destination month for each post "
             "(e.g. June 5 → July 5, June 20 → July 20). "
             "MEMORY: Use save_memory to store durable user facts — brand details, recurring campaigns, "
@@ -620,9 +629,7 @@ async def _run_chat_loop(
     changes: list[dict] = []
 
     for i in range(MAX_CHAT_ITERATIONS):
-        # Required on first turn to prevent the model from hallucinating post/memory operations.
-        tool_choice_mode = "required" if i == 0 else "auto"
-        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice=tool_choice_mode)
+        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice="auto")
 
         if not result["tool_calls"]:
             return result["text"] or "Done.", changes

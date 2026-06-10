@@ -332,6 +332,12 @@ function DashboardContent() {
     }
   }
 
+  const handleFeedbackSubmit = (message: string) => {
+    const subject = encodeURIComponent("Calendo Feedback")
+    const body = encodeURIComponent(message)
+    window.open(`mailto:bobblash.eb@gmail.com?subject=${subject}&body=${body}`)
+  }
+
   const handleExport = async () => {
     try {
       await exportCSV(getMonthStr(currentMonth))
@@ -428,12 +434,6 @@ function DashboardContent() {
                     onMonthChange={setCurrentMonth}
                     onMarkPublished={handleMarkPublished}
                   />
-                  <div
-                    className="mt-8 border-t pt-4 text-center"
-                    style={{ borderColor: "#1E1E1E" }}
-                  >
-                    <FeedbackButton variant="link" onSubmit={() => {}} />
-                  </div>
                 </>
               ) : (
                 <>
@@ -527,7 +527,7 @@ function DashboardContent() {
             <p className="mb-3 text-xs" style={{ color: "#888888" }}>
               Share your thoughts to help improve Calendo.
             </p>
-            <FeedbackButton onSubmit={() => {}} />
+            <FeedbackButton variant="settings" onSubmit={handleFeedbackSubmit} />
           </div>
 
           <div className="pt-2">
