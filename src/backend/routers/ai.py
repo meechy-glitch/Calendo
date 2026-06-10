@@ -208,6 +208,40 @@ _CHAT_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "delete_posts",
+            "description": (
+                "Hard-delete one or more of the user's posts. "
+                "When confirm is false or omitted, returns a preview of what would be deleted "
+                "WITHOUT deleting anything — use this output to show the user which posts will be removed. "
+                "Only pass confirm=true after the user has explicitly confirmed. "
+                "Maximum 50 posts per call. "
+                "WORKFLOW: call list_posts → show user the titles+dates → ask 'shall I delete these?' → "
+                "when user says yes, call delete_posts again with confirm=true."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "post_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "IDs of the posts to delete (max 50)",
+                        "maxItems": 50,
+                    },
+                    "confirm": {
+                        "type": "boolean",
+                        "description": (
+                            "Must be true to actually delete. "
+                            "If false or absent, returns a dry-run preview without touching the database."
+                        ),
+                    },
+                },
+                "required": ["post_ids"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "bulk_create_posts",
             "description": "Create multiple posts at once, e.g. to plan a full week.",
             "parameters": {
@@ -300,6 +334,24 @@ class _BulkRescheduleArgs(BaseModel):
 
 class _BulkCreateArgs(BaseModel):
     posts: list[_PostArgs]
+
+
+class _DeletePostsArgs(BaseModel):
+    post_ids: list[Union[int, str]]
+    confirm: bool = False
+
+    @field_validator("post_ids", mode="before")
+    @classmethod
+    def coerce_ids(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("post_ids must be a list")
+        result = []
+        for item in v:
+            try:
+                result.append(int(item))
+            except (TypeError, ValueError):
+                raise ValueError(f"post_id must be an integer, got {item!r}")
+        return result
 
 
 # ── Request/Response bodies ────────────────────────────────────────────────
@@ -577,6 +629,46 @@ async def _execute_tool(
             created.append({"id": post.id, "title": post.title})
         return json.dumps({"created": created})
 
+    if tool_name == "delete_posts":
+        try:
+            a = _DeletePostsArgs(**args)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+        MAX_DELETE = 50
+        post_ids = a.post_ids[:MAX_DELETE]
+
+        if not a.confirm:
+            # Dry-run: return preview without touching the database
+            preview = []
+            for post_id in post_ids:
+                post = crud.get_post_by_id(db, post_id)
+                if post and post.user_id == user_id:
+                    preview.append({
+                        "id": post.id,
+                        "title": post.title,
+                        "scheduled_date": str(post.scheduled_date),
+                        "platform": post.platform.value,
+                    })
+            return json.dumps({
+                "would_delete": preview,
+                "confirm_required": True,
+                "message": "Call delete_posts again with confirm=true after the user confirms.",
+            })
+
+        # Confirmed — hard-delete each post
+        deleted: list[int] = []
+        errors: list[dict] = []
+        for post_id in post_ids:
+            outcome = crud.delete_post(db, post_id, user_id)
+            if outcome == "deleted":
+                changes.append({"type": "deleted", "id": post_id})
+                deleted.append(post_id)
+            elif outcome == "not_found":
+                errors.append({"post_id": post_id, "error": "Not found"})
+            elif outcome == "forbidden":
+                errors.append({"post_id": post_id, "error": "Not authorized"})
+        return json.dumps({"deleted": deleted, "errors": errors})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 
@@ -615,12 +707,21 @@ async def _run_chat_loop(
             "tone preferences, ongoing projects, key decisions. Call it when the user says "
             "'remember that…' AND proactively when you learn something clearly durable. "
             "Do NOT save one-off task details or trivial information. "
-            "IMPORTANT: After using any tool, always respond in natural, conversational English. "
-            "Never output raw JSON, tool results, or structured data directly to the user. "
-            "Instead, summarise what you did in plain language, for example: "
+            "DELETE RULE: When the user asks to delete posts (any phrasing — remove, clear, wipe, "
+            "get rid of), you MUST: "
+            "1. Call list_posts to identify the matching posts. "
+            "2. Tell the user exactly which posts (title + date) would be deleted and ask: "
+            "'Shall I delete these? Reply yes to confirm.' "
+            "3. Do NOT call delete_posts with confirm=true on this turn. "
+            "Only call delete_posts with confirm=true after the user explicitly says yes. "
+            "Even vague requests like 'delete everything' require listing and confirmation first. "
+            "The tool enforces this: calling delete_posts without confirm=true returns a preview only. "
+            "CRITICAL: Your replies to the user MUST be plain English prose. "
+            "Never output raw JSON, tool arguments, tool results, or any structured data as reply text. "
+            "After every tool call, summarise what happened in natural language — for example: "
             "'I've scheduled 3 Instagram posts for next week: Monday — \"Morning routine\", "
             "Wednesday — \"Product spotlight\", Friday — \"Weekend vibes\".' "
-            "Be friendly, concise, and specific about what was created, updated, or found."
+            "Be friendly, concise, and specific about what was created, updated, found, or deleted."
             f"{bv_text}"
             f"{memories_text}"
         ),
@@ -632,7 +733,12 @@ async def _run_chat_loop(
         result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice="auto")
 
         if not result["tool_calls"]:
-            return result["text"] or "Done.", changes
+            text = result["text"] or ""
+            # Belt-and-suspenders: never surface a raw JSON tool-call payload to the user
+            s = text.strip()
+            if s.startswith("[{") or (s.startswith("{") and '"name"' in s[:120]):
+                return "I had trouble processing that request. Please try again.", changes
+            return text or "Done.", changes
 
         # Append assistant message (with tool_calls)
         assistant_msg: dict = {

@@ -1,9 +1,49 @@
 from __future__ import annotations
+import json
 import os
+import types
 from openai import AsyncOpenAI
 from src.backend.config import GROQ_API_KEY, LLM_MODEL
 
 _groq_client: AsyncOpenAI | None = None
+
+
+def _parse_failed_generation(text: str) -> list:
+    """Try to recover tool calls from a Groq tool_use_failed payload.
+
+    Groq emits failed_generation as a JSON string like:
+      [{"name": "update_post", "parameters": {...}}]
+    Returns a list of SimpleNamespace objects with .id, .function.name,
+    .function.arguments — same interface _run_chat_loop expects.
+    """
+    stripped = text.strip()
+    try:
+        data = json.loads(stripped)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    items = data if isinstance(data, list) else [data]
+    calls = []
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name") or (item.get("function") or {}).get("name")
+        args = (
+            item.get("parameters")
+            or item.get("arguments")
+            or (item.get("function") or {}).get("arguments")
+            or {}
+        )
+        if not name:
+            continue
+        tc = types.SimpleNamespace(
+            id=f"recovered-{i}",
+            function=types.SimpleNamespace(
+                name=name,
+                arguments=json.dumps(args) if not isinstance(args, str) else args,
+            ),
+        )
+        calls.append(tc)
+    return calls
 
 
 def _get_groq_client() -> AsyncOpenAI:
@@ -41,8 +81,12 @@ async def complete(
         # The model's actual generation is recoverable from the error body.
         body = getattr(e, "body", None) or {}
         if isinstance(body, dict) and body.get("code") == "tool_use_failed":
-            text = body.get("failed_generation", "")
-            return {"text": text, "tool_calls": [], "finish_reason": "stop"}
+            raw = body.get("failed_generation", "")
+            recovered = _parse_failed_generation(raw)
+            if recovered:
+                return {"text": None, "tool_calls": recovered, "finish_reason": "tool_calls"}
+            # Failed generation not parseable — return nothing rather than leaking JSON
+            return {"text": "", "tool_calls": [], "finish_reason": "stop"}
         raise
     choice = response.choices[0]
     msg = choice.message
