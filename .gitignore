@@ -9,3 +9,8 @@ __pycache__/
 *.pyc
 dist/
 test.db
+.swarm/
+.hive-mind/
+.claude-flow/
+.remember/
+.pytest_cache/
