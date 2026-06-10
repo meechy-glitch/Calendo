@@ -14,3 +14,8 @@ test.db
 .claude-flow/
 .remember/
 .pytest_cache/
+.swarm/
+.hive-mind/
+.claude-flow/
+.remember/
+.pytest_cache/
