@@ -122,3 +122,32 @@ export async function captionFromImage(
   })
   return handleResponse(res)
 }
+
+export interface MemoryItem {
+  id: number
+  content: string
+  type: string
+  source: string
+  created_at: string
+}
+
+export async function getMemories(): Promise<MemoryItem[]> {
+  const res = await fetch(`${API_BASE}/ai/memory`, { headers: getHeaders() })
+  return handleResponse(res)
+}
+
+export async function deleteMemory(id: number): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/ai/memory/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  })
+  return handleResponse(res)
+}
+
+export async function clearMemories(): Promise<{ cleared: number }> {
+  const res = await fetch(`${API_BASE}/ai/memory`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  })
+  return handleResponse(res)
+}

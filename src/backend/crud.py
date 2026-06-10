@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from typing import Optional, List
+from typing import Optional, List, Tuple
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from src.backend import models, schemas
 from src.backend.auth import hash_password
@@ -165,3 +166,62 @@ def set_media_asset_ready(db: Session, asset_id: int, user_id: int) -> Optional[
     db.commit()
     db.refresh(asset)
     return asset
+
+
+def save_memory(
+    db: Session, user_id: int, content: str, memory_type: str
+) -> Tuple[Optional[models.Memory], bool]:
+    """Returns (memory, was_saved). was_saved=False means it was a duplicate."""
+    existing = db.query(models.Memory).filter(
+        models.Memory.user_id == user_id,
+        func.lower(models.Memory.content) == content.lower(),
+    ).first()
+    if existing:
+        return existing, False
+
+    count = db.query(func.count(models.Memory.id)).filter(
+        models.Memory.user_id == user_id
+    ).scalar() or 0
+    if count >= 200:
+        oldest = (
+            db.query(models.Memory)
+            .filter(models.Memory.user_id == user_id)
+            .order_by(models.Memory.created_at)
+            .first()
+        )
+        if oldest:
+            db.delete(oldest)
+
+    memory = models.Memory(user_id=user_id, content=content, type=memory_type)
+    db.add(memory)
+    db.commit()
+    db.refresh(memory)
+    return memory, True
+
+
+def get_memories(db: Session, user_id: int, limit: int = 50) -> List[models.Memory]:
+    return (
+        db.query(models.Memory)
+        .filter(models.Memory.user_id == user_id)
+        .order_by(models.Memory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def delete_memory(db: Session, user_id: int, memory_id: int) -> str:
+    memory = db.query(models.Memory).filter(
+        models.Memory.id == memory_id,
+        models.Memory.user_id == user_id,
+    ).first()
+    if not memory:
+        return "not_found"
+    db.delete(memory)
+    db.commit()
+    return "deleted"
+
+
+def clear_memories(db: Session, user_id: int) -> int:
+    count = db.query(models.Memory).filter(models.Memory.user_id == user_id).delete()
+    db.commit()
+    return count

@@ -34,7 +34,16 @@ async def complete(
     if tools:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = tool_choice
-    response = await client.chat.completions.create(**kwargs)
+    try:
+        response = await client.chat.completions.create(**kwargs)
+    except Exception as e:
+        # Groq returns 400 tool_use_failed when the model outputs text instead of a tool call.
+        # The model's actual generation is recoverable from the error body.
+        body = getattr(e, "body", None) or {}
+        if isinstance(body, dict) and body.get("code") == "tool_use_failed":
+            text = body.get("failed_generation", "")
+            return {"text": text, "tool_calls": [], "finish_reason": "stop"}
+        raise
     choice = response.choices[0]
     msg = choice.message
     return {

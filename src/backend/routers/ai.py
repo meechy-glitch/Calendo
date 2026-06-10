@@ -50,6 +50,33 @@ _CHAT_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "save_memory",
+            "description": (
+                "Save a durable fact, preference, or summary about the user. "
+                "Call when the user explicitly says 'remember that…' OR when you learn something "
+                "clearly durable: their brand, recurring campaigns, tone preferences, ongoing projects, "
+                "key decisions. Do NOT save one-off task details, questions, or conversation trivia."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The fact, preference, or summary to remember",
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["fact", "preference", "summary"],
+                        "description": "Category of memory",
+                    },
+                },
+                "required": ["content", "type"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_today",
             "description": "Get the current date and the user's timezone.",
             "parameters": {"type": "object", "properties": {}, "required": []},
@@ -214,6 +241,11 @@ _CHAT_TOOLS = [
 
 # ── Pydantic input models for tool validation ──────────────────────────────
 
+class _SaveMemoryArgs(BaseModel):
+    content: str
+    type: str
+
+
 class _ListPostsArgs(BaseModel):
     month: str
     platform: Optional[str] = None
@@ -350,6 +382,14 @@ def _downscale_image(image_bytes: bytes, mime_type: Optional[str]) -> tuple[byte
     return buf.getvalue(), out_mime
 
 
+def _get_memories_text(db: Session, user_id: int) -> str:
+    memories = crud.get_memories(db, user_id, limit=50)
+    if not memories:
+        return ""
+    lines = [f"- [{m.type}] {m.content}" for m in memories]
+    return "\n\nWhat you remember about this user:\n" + "\n".join(lines)
+
+
 async def _execute_tool(
     tool_name: str,
     args: dict,
@@ -358,6 +398,18 @@ async def _execute_tool(
     changes: list[dict],
     timezone: str,
 ) -> str:
+    if tool_name == "save_memory":
+        try:
+            a = _SaveMemoryArgs(**args)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+        valid_types = {"fact", "preference", "summary"}
+        mem_type = a.type if a.type in valid_types else "fact"
+        _, was_saved = crud.save_memory(db, user_id, a.content, mem_type)
+        if was_saved:
+            return json.dumps({"saved": True, "content": a.content, "type": mem_type})
+        return json.dumps({"saved": False, "reason": "duplicate"})
+
     if tool_name == "get_today":
         return json.dumps({"date": str(date.today()), "timezone": timezone})
 
@@ -536,6 +588,7 @@ async def _run_chat_loop(
 ) -> tuple[str, list[dict]]:
     from src.backend import llm  # lazy — requires openai at runtime only
     bv_text = _get_brand_voice_text(db, user.id)
+    memories_text = _get_memories_text(db, user.id)
     system_msg = {
         "role": "system",
         "content": (
@@ -549,6 +602,10 @@ async def _run_chat_loop(
             "then call bulk_reschedule_posts with all posts in a single call, "
             "computing the equivalent date in the destination month for each post "
             "(e.g. June 5 → July 5, June 20 → July 20). "
+            "MEMORY: Use save_memory to store durable user facts — brand details, recurring campaigns, "
+            "tone preferences, ongoing projects, key decisions. Call it when the user says "
+            "'remember that…' AND proactively when you learn something clearly durable. "
+            "Do NOT save one-off task details or trivial information. "
             "IMPORTANT: After using any tool, always respond in natural, conversational English. "
             "Never output raw JSON, tool results, or structured data directly to the user. "
             "Instead, summarise what you did in plain language, for example: "
@@ -556,14 +613,14 @@ async def _run_chat_loop(
             "Wednesday — \"Product spotlight\", Friday — \"Weekend vibes\".' "
             "Be friendly, concise, and specific about what was created, updated, or found."
             f"{bv_text}"
+            f"{memories_text}"
         ),
     }
     messages: list[dict] = [system_msg] + messages_in
     changes: list[dict] = []
 
     for i in range(MAX_CHAT_ITERATIONS):
-        # Force a tool call on the first turn so the model cannot hallucinate
-        # a success response without touching the database.
+        # Required on first turn to prevent the model from hallucinating post/memory operations.
         tool_choice_mode = "required" if i == 0 else "auto"
         result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice=tool_choice_mode)
 
@@ -789,6 +846,35 @@ async def transcribe_audio(
         return {"text": result.text}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Transcription error: {exc}")
+
+
+@router.get("/memory")
+def list_memories(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+) -> list[schemas.MemoryResponse]:
+    return crud.get_memories(db, current_user.id, limit=200)
+
+
+@router.delete("/memory/{memory_id}")
+def delete_memory(
+    memory_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+) -> dict:
+    result = crud.delete_memory(db, current_user.id, memory_id)
+    if result == "not_found":
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return {"deleted": True}
+
+
+@router.delete("/memory")
+def clear_all_memories(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+) -> dict:
+    count = crud.clear_memories(db, current_user.id)
+    return {"cleared": count}
 
 
 @router.post("/caption-from-image")

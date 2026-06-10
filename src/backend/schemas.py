@@ -168,3 +168,13 @@ class UserMeResponse(BaseModel):
 
 class UserMeUpdate(BaseModel):
     lead_reminders_enabled: Optional[bool] = None
+
+
+class MemoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    type: str
+    source: str
+    created_at: datetime

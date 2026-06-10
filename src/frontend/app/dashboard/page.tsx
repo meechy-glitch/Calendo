@@ -17,6 +17,7 @@ import { AnalyticsSummary } from "@/components/AnalyticsSummary"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { ChatPanel } from "@/components/ChatPanel"
 import { BrandVoiceSettings } from "@/components/BrandVoiceSettings"
+import { AIMemorySettings } from "@/components/AIMemorySettings"
 import { ReadyQueue } from "@/components/ReadyQueue"
 import { NotificationSettings } from "@/components/NotificationSettings"
 
@@ -105,6 +106,7 @@ function DashboardContent() {
   const [selectedPost, setSelectedPost] = useState<PostData | undefined>()
   const [brandVoiceOpen, setBrandVoiceOpen] = useState(false)
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false)
+  const [memoryOpen, setMemoryOpen] = useState(false)
   const [readyCount, setReadyCount] = useState(0)
   const [readyRefreshKey, setReadyRefreshKey] = useState(0)
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
@@ -487,6 +489,23 @@ function DashboardContent() {
             className="rounded-lg border p-4"
             style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
           >
+            <p className="mb-0.5 text-sm font-medium" style={{ color: "#F5F5F5" }}>AI Memory</p>
+            <p className="mb-3 text-xs" style={{ color: "#888888" }}>
+              Facts and preferences the assistant has learned about you across sessions.
+            </p>
+            <button
+              onClick={() => setMemoryOpen(true)}
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-[#E1306C] hover:text-[#E1306C]"
+              style={{ backgroundColor: "transparent", borderColor: "#2A2A2A", color: "#888888" }}
+            >
+              Manage Memory
+            </button>
+          </div>
+
+          <div
+            className="rounded-lg border p-4"
+            style={{ backgroundColor: "#1A1A1A", borderColor: "#2A2A2A" }}
+          >
             <p className="mb-0.5 text-sm font-medium" style={{ color: "#F5F5F5" }}>Notifications</p>
             <p className="mb-3 text-xs" style={{ color: "#888888" }}>
               Configure lead-time reminders for scheduled posts.
@@ -534,6 +553,7 @@ function DashboardContent() {
         onClose={() => setModalOpen(false)}
       />
       <BrandVoiceSettings isOpen={brandVoiceOpen} onClose={() => setBrandVoiceOpen(false)} />
+      <AIMemorySettings isOpen={memoryOpen} onClose={() => setMemoryOpen(false)} />
       <NotificationSettings isOpen={notifSettingsOpen} onClose={() => setNotifSettingsOpen(false)} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </AppShell>

@@ -73,6 +73,7 @@ class User(Base):
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user")
     brand_voice = relationship("BrandVoice", back_populates="user", uselist=False)
     media_assets = relationship("MediaAsset", back_populates="user")
+    memories = relationship("Memory", back_populates="user", cascade="all, delete-orphan")
 
 
 class Post(Base):
@@ -133,3 +134,16 @@ class PasswordResetToken(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="password_reset_tokens")
+
+
+class Memory(Base):
+    __tablename__ = "memory"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    type = Column(String(20), nullable=False)
+    source = Column(String(20), nullable=False, default="assistant", server_default="assistant")
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    user = relationship("User", back_populates="memories")
