@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { X, Send, Bot, Mic, Loader2 } from "lucide-react"
+import { X, Send, Bot, Mic, Loader2, Trash2 } from "lucide-react"
 import { sendChat, transcribeAudio, type ChatMessage, type ChatChange } from "@/services/ai"
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
@@ -10,8 +10,25 @@ interface ChatPanelProps {
   embedded?: boolean
 }
 
+// Persist the conversation in sessionStorage so it survives switching between
+// dashboard tabs (which unmounts this component) but is cleared when the browser
+// tab/window is closed — i.e. it does not leak across browser sessions.
+const STORAGE_KEY = "calendo.assistant.history"
+
+function loadHistory(): ChatMessage[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 export function ChatPanel({ onClose, onChanges, embedded }: ChatPanelProps) {
-  const [messages, setMessages] = React.useState<ChatMessage[]>([])
+  const [messages, setMessages] = React.useState<ChatMessage[]>(loadHistory)
   const [input, setInput] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const bottomRef = React.useRef<HTMLDivElement>(null)
@@ -65,6 +82,25 @@ export function ChatPanel({ onClose, onChanges, embedded }: ChatPanelProps) {
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
+
+  // Persist conversation across tab switches within the same browser session.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      if (messages.length > 0) {
+        window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+      } else {
+        window.sessionStorage.removeItem(STORAGE_KEY)
+      }
+    } catch { /* storage full or unavailable — keep the in-memory conversation */ }
+  }, [messages])
+
+  const handleClear = () => {
+    setMessages([])
+    setInput("")
+    try { window.sessionStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+    textareaRef.current?.focus()
+  }
 
   const handleSend = async () => {
     const text = input.trim()
@@ -125,16 +161,30 @@ export function ChatPanel({ onClose, onChanges, embedded }: ChatPanelProps) {
             Calendo AI
           </span>
         </div>
-        {!embedded && (
-          <button
-            onClick={onClose}
-            className="rounded p-1 transition-colors hover:bg-[#2A2A2A]"
-            style={{ color: "#888888" }}
-            aria-label="Close"
-          >
-            <X size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] transition-colors hover:bg-[#2A2A2A]"
+              style={{ color: "#888888" }}
+              aria-label="Clear conversation"
+              title="Clear conversation"
+            >
+              <Trash2 size={13} />
+              <span>Clear</span>
+            </button>
+          )}
+          {!embedded && (
+            <button
+              onClick={onClose}
+              className="rounded p-1 transition-colors hover:bg-[#2A2A2A]"
+              style={{ color: "#888888" }}
+              aria-label="Close"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
