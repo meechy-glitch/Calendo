@@ -3,7 +3,7 @@ const PLATFORM_COLORS = {
   instagram: "#833AB4",
   x: "#888888",
   tiktok: "#FE2C55",
-  linkedin: "#0A66C2",
+  linkedin: "#0E8C8C",
   facebook: "#1877F2",
 } as const
 

@@ -5,7 +5,7 @@ const PLATFORMS = [
   { key: "instagram", name: "Instagram", color: "#833AB4" },
   { key: "x", name: "X", color: "#888888" },
   { key: "tiktok", name: "TikTok", color: "#FE2C55" },
-  { key: "linkedin", name: "LinkedIn", color: "#0A66C2" },
+  { key: "linkedin", name: "LinkedIn", color: "#0E8C8C" },
   { key: "facebook", name: "Facebook", color: "#1877F2" },
 ] as const
 

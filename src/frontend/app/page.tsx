@@ -9,7 +9,7 @@ const platforms = [
   { name: "Instagram", color: "#833AB4" },
   { name: "X", color: "#888888" },
   { name: "TikTok", color: "#FE2C55" },
-  { name: "LinkedIn", color: "#0A66C2" },
+  { name: "LinkedIn", color: "#0E8C8C" },
   { name: "Facebook", color: "#1877F2" },
 ]
 
@@ -24,7 +24,7 @@ const mockChips: Record<number, { color: string; label: string }> = {
   3:  { color: "#833AB4", label: "Product drop" },
   7:  { color: "#FE2C55", label: "BTS clip" },
   12: { color: "#888888", label: "Thread" },
-  15: { color: "#0A66C2", label: "Team update" },
+  15: { color: "#0E8C8C", label: "Team update" },
   19: { color: "#833AB4", label: "Story series" },
   23: { color: "#FE2C55", label: "Tutorial" },
 }
