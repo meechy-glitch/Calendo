@@ -200,7 +200,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 md:gap-16 items-center">
 
             {/* Left: Copy + CTAs */}
-            <div className="flex flex-col items-center text-center md:items-start md:text-left">
+            <div className="flex flex-col items-center text-center md:items-start md:text-left min-w-0 w-full">
               <h1
                 className="text-5xl md:text-7xl mb-3"
                 style={{
@@ -223,7 +223,7 @@ export default function LandingPage() {
               </p>
 
               {/* Platform pills — scrollable on mobile */}
-              <div className="relative w-full mb-5 md:mb-6">
+              <div className="relative w-full min-w-0 mb-5 md:mb-6">
                 <div
                   className="lp-pills-row flex flex-nowrap gap-2 overflow-x-auto"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
