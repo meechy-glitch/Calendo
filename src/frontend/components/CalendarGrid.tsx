@@ -9,6 +9,7 @@ const PLATFORM_COLORS = {
   x: "#888888",
   tiktok: "#FE2C55",
   linkedin: "#0A66C2",
+  facebook: "#1877F2",
 } as const
 
 export type Platform = keyof typeof PLATFORM_COLORS

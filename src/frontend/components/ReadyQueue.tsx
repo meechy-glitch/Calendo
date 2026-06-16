@@ -9,6 +9,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   x: "#888888",
   tiktok: "#FE2C55",
   linkedin: "#0A66C2",
+  facebook: "#1877F2",
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -16,6 +17,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   x: "X",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
+  facebook: "Facebook",
 }
 
 interface ReadyPost {

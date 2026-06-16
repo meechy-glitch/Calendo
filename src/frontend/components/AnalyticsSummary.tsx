@@ -4,6 +4,7 @@ const PLATFORM_COLORS = {
   x: "#888888",
   tiktok: "#FE2C55",
   linkedin: "#0A66C2",
+  facebook: "#1877F2",
 } as const
 
 type Platform = keyof typeof PLATFORM_COLORS
@@ -23,6 +24,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   x: "X",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
+  facebook: "Facebook",
 }
 
 export function AnalyticsSummary({ posts }: AnalyticsSummaryProps) {
@@ -30,7 +32,7 @@ export function AnalyticsSummary({ posts }: AnalyticsSummaryProps) {
   const draft = posts.filter((p) => p.status === "draft").length
   const total = posts.length
 
-  const platformCounts = (["instagram", "x", "tiktok", "linkedin"] as Platform[])
+  const platformCounts = (["instagram", "x", "tiktok", "linkedin", "facebook"] as Platform[])
     .map((p) => ({ platform: p, count: posts.filter((post) => post.platform === p).length }))
     .filter(({ count }) => count > 0)
 

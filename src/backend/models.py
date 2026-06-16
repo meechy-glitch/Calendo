@@ -13,6 +13,7 @@ class PlatformEnum(str, enum.Enum):
     x = "x"
     tiktok = "tiktok"
     linkedin = "linkedin"
+    facebook = "facebook"
 
 
 class StatusEnum(str, enum.Enum):

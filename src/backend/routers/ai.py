@@ -16,7 +16,7 @@ from src.backend.limiter import limiter
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-VALID_PLATFORMS = {"instagram", "x", "tiktok", "linkedin"}
+VALID_PLATFORMS = {"instagram", "x", "tiktok", "linkedin", "facebook"}
 
 _PLATFORM_CAPTION_INSTRUCTIONS = {
     "instagram": (
@@ -36,6 +36,11 @@ _PLATFORM_CAPTION_INSTRUCTIONS = {
         "Write professional LinkedIn captions. Business tone, no emoji. "
         "Focus on insights, value, or a compelling story. End with a question or call to action."
     ),
+    "facebook": (
+        "Write conversational Facebook captions. Slightly longer than X and link-friendly. "
+        "Be friendly and approachable, encourage comments and shares. "
+        "Use at most 1-2 hashtags."
+    ),
 }
 
 _PLATFORM_REWRITE_INSTRUCTIONS = {
@@ -43,6 +48,7 @@ _PLATFORM_REWRITE_INSTRUCTIONS = {
     "x": "Punchy, under 280 characters, no filler.",
     "tiktok": "Casual, hooky, authentic, trending language.",
     "linkedin": "Professional, no emoji, insight-driven.",
+    "facebook": "Conversational, link-friendly, slightly longer than X, 1-2 hashtags max.",
 }
 
 MAX_CHAT_ITERATIONS = 6
@@ -131,7 +137,7 @@ _CHAT_TOOLS = [
                     "month": {"type": "string", "description": "Month in YYYY-MM format"},
                     "platform": {
                         "anyOf": [
-                            {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin"]},
+                            {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin", "facebook"]},
                             {"type": "null"},
                         ],
                         "description": "Filter by platform (omit or null for all)",
@@ -158,7 +164,7 @@ _CHAT_TOOLS = [
                 "properties": {
                     "title": {"type": "string"},
                     "caption": {"type": "string"},
-                    "platform": {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin"]},
+                    "platform": {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin", "facebook"]},
                     "scheduled_date": {"type": "string", "description": "YYYY-MM-DD"},
                     "scheduled_time": {"type": "string", "description": "HH:MM (optional)"},
                     "notes": {"type": "string"},
@@ -181,7 +187,7 @@ _CHAT_TOOLS = [
                     },
                     "title": {"type": "string"},
                     "caption": {"type": "string"},
-                    "platform": {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin"]},
+                    "platform": {"type": "string", "enum": ["instagram", "x", "tiktok", "linkedin", "facebook"]},
                     "scheduled_date": {"type": "string", "description": "YYYY-MM-DD"},
                     "scheduled_time": {"type": "string"},
                     "status": {"type": "string", "enum": ["draft", "scheduled", "published"]},
@@ -294,7 +300,7 @@ _CHAT_TOOLS = [
                                 "caption": {"type": "string"},
                                 "platform": {
                                     "type": "string",
-                                    "enum": ["instagram", "x", "tiktok", "linkedin"],
+                                    "enum": ["instagram", "x", "tiktok", "linkedin", "facebook"],
                                 },
                                 "scheduled_date": {"type": "string", "description": "YYYY-MM-DD"},
                                 "scheduled_time": {"type": "string"},
@@ -1110,7 +1116,7 @@ async def caption_from_image(
         "You are an expert social media copywriter with vision capabilities.\n"
         "Analyze the attached image and write 3 captions.\n"
         "Respond ONLY with valid JSON, no prose, no markdown fences:\n"
-        '{"suggested_platform":"instagram|x|tiktok|linkedin",'
+        '{"suggested_platform":"instagram|x|tiktok|linkedin|facebook",'
         '"captions":["caption1","caption2","caption3"],'
         '"alt_text":"short accessibility description"}'
         f"{bv_text}"

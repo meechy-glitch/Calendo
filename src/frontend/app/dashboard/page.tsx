@@ -21,7 +21,7 @@ import { AIMemorySettings } from "@/components/AIMemorySettings"
 import { ReadyQueue } from "@/components/ReadyQueue"
 import { NotificationSettings } from "@/components/NotificationSettings"
 
-const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin"]
+const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin", "facebook"]
 
 interface ApiMediaAsset {
   id: number

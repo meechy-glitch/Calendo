@@ -18,7 +18,7 @@ import { AICaptionButton } from "@/components/AICaptionButton"
 import { AIImageCaptionButton } from "@/components/AIImageCaptionButton"
 import { MediaUploader, type MediaItem } from "@/components/MediaUploader"
 
-export type Platform = "instagram" | "x" | "tiktok" | "linkedin"
+export type Platform = "instagram" | "x" | "tiktok" | "linkedin" | "facebook"
 export type PostStatus = "draft" | "scheduled" | "published" | "ready" | "posted" | "skipped"
 
 const PLATFORM_COLORS = {
@@ -26,6 +26,7 @@ const PLATFORM_COLORS = {
   x: "#888888",
   tiktok: "#FE2C55",
   linkedin: "#0A66C2",
+  facebook: "#1877F2",
 } as const
 
 const PLATFORM_CHAR_LIMITS: Record<Platform, number> = {
@@ -33,6 +34,7 @@ const PLATFORM_CHAR_LIMITS: Record<Platform, number> = {
   x: 280,
   tiktok: 2200,
   linkedin: 3000,
+  facebook: 2200,
 }
 
 const PLATFORM_LABELS: Record<Platform, string> = {
@@ -40,6 +42,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   x: "X",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
+  facebook: "Facebook",
 }
 
 const PLATFORMS: { value: Platform; label: string }[] = [
@@ -47,6 +50,7 @@ const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "x", label: "X" },
   { value: "tiktok", label: "TikTok" },
   { value: "linkedin", label: "LinkedIn" },
+  { value: "facebook", label: "Facebook" },
 ]
 
 const STATUSES: { value: PostStatus; label: string }[] = [

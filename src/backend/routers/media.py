@@ -68,6 +68,15 @@ _PLATFORM_VIDEO_SPECS = {
         "max_duration": None,
         "aspect": (9, 16),
     },
+    "facebook": {
+        # Facebook accepts large MP4 uploads (up to ~4 GB / 240 min for Pages);
+        # use a generous cap so warnings only fire on clearly oversized files.
+        "max_bytes": 1024 * 1024 * 1024,  # 1 GB
+        "mimes": {"video/mp4", "video/quicktime"},
+        "min_duration": None,
+        "max_duration": None,
+        "aspect": None,
+    },
 }
 
 _PLATFORM_NAMES = {
@@ -75,6 +84,7 @@ _PLATFORM_NAMES = {
     "linkedin": "LinkedIn",
     "instagram": "Instagram",
     "tiktok": "TikTok",
+    "facebook": "Facebook",
 }
 
 

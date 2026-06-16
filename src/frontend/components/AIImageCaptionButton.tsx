@@ -8,6 +8,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   x: "X",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
+  facebook: "Facebook",
 }
 
 interface AIImageCaptionButtonProps {

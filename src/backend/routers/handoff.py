@@ -28,7 +28,7 @@ def _send_email(to: str, subject: str, html: str) -> None:
 
 
 def _platform_label(platform: str) -> str:
-    return {"instagram": "Instagram", "x": "X", "tiktok": "TikTok", "linkedin": "LinkedIn"}.get(platform, platform)
+    return {"instagram": "Instagram", "x": "X", "tiktok": "TikTok", "linkedin": "LinkedIn", "facebook": "Facebook"}.get(platform, platform)
 
 
 @router.post("/internal/notify-due")
@@ -143,6 +143,12 @@ def get_handoff(
             type="open_app",
             url="instagram://app",
             note="Download media below, then paste caption in the app.",
+        )
+    elif platform == "facebook":
+        action = schemas.PlatformAction(
+            type="open_app",
+            url="https://www.facebook.com/",
+            note="No reliable pre-fill for Pages. Copy the caption, download media, then post on your Facebook Page.",
         )
     else:  # tiktok
         action = schemas.PlatformAction(

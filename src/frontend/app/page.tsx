@@ -10,6 +10,7 @@ const platforms = [
   { name: "X", color: "#888888" },
   { name: "TikTok", color: "#FE2C55" },
   { name: "LinkedIn", color: "#0A66C2" },
+  { name: "Facebook", color: "#1877F2" },
 ]
 
 // May 2026 starts on Friday (index 5, 0=Sun)
@@ -289,10 +290,10 @@ export default function LandingPage() {
             >
               <Calendar size={20} style={{ color: "#E1306C", marginBottom: "14px", display: "block" }} />
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#F0F0F0", margin: "0 0 7px", letterSpacing: "-0.01em" }}>
-                Schedule across 4 platforms
+                Schedule across 5 platforms
               </h3>
               <p style={{ fontSize: "13px", lineHeight: 1.65, color: "#565656", margin: 0 }}>
-                Instagram, X, TikTok and LinkedIn. One calendar.
+                Instagram, X, TikTok, LinkedIn and Facebook. One calendar.
               </p>
             </div>
 
