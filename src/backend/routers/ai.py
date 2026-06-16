@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import boto3
 from datetime import date, datetime
 from typing import Optional, Union
@@ -45,6 +46,43 @@ _PLATFORM_REWRITE_INSTRUCTIONS = {
 }
 
 MAX_CHAT_ITERATIONS = 6
+
+# ── Intent detection for code-level enforcement ────────────────────────────
+# Reschedule/move intent → force the model to call a tool on the first turn so it
+# cannot "talk its way out" of the work by narrating success it never performed.
+_RESCHEDULE_INTENT_RE = re.compile(
+    r"\b(move|moves|moved|moving|reschedul\w*|shift\w*|push\w*|change\s+(the\s+)?date)\b",
+    re.IGNORECASE,
+)
+# Broader write intent (move/reschedule/create/delete + synonyms) → used by the
+# finalize guard to detect a fabricated success that touched nothing.
+_WRITE_INTENT_RE = re.compile(
+    r"\b(move\w*|reschedul\w*|shift\w*|push\w*|creat\w*|delet\w*|remov\w*|wipe\w*|clear\w*|get\s+rid\s+of)\b",
+    re.IGNORECASE,
+)
+# Tools that actually mutate posts. Read tools (list_posts, get_today) don't count.
+_WRITE_TOOLS = {
+    "create_post", "bulk_create_posts", "update_post",
+    "reschedule_post", "bulk_reschedule_posts", "delete_posts",
+}
+# Strips any whole sentence that exposes internal "ID" language from a user-facing reply.
+_ID_SENTENCE_RE = re.compile(r"[^.!?\n]*\b[Ii][Dd]s?\b[^.!?\n]*[.!?]?\s*")
+
+
+def _last_user_text(messages_in: list[dict]) -> str:
+    for m in reversed(messages_in):
+        if m.get("role") == "user":
+            return (m.get("content") or "")
+    return ""
+
+
+def _scrub_id_language(reply: str) -> str:
+    """Remove chain-of-thought 'I need to get their IDs first' style preamble.
+    Post IDs are internal; the user should only see results by title and date."""
+    cleaned = _ID_SENTENCE_RE.sub("", reply).strip()
+    # Collapse any double spaces left behind
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned or reply
 
 _CHAT_TOOLS = [
     {
@@ -688,6 +726,12 @@ async def _run_chat_loop(
             f"Today is {date.today()}. User's timezone: {timezone}. "
             "Use the provided tools to read and modify the user's posts. "
             "Never expose or assume the user's internal ID. "
+            "ID PRIVACY RULE: Post IDs are internal plumbing for tool calls only. NEVER mention, "
+            "list, or expose a post ID in your reply to the user. Always refer to posts by their "
+            "title and date (e.g. \"Morning routine\" on Aug 5), never by number. "
+            "Do NOT narrate internal steps such as 'I need to get their IDs first' or 'let me fetch "
+            "the IDs' — work silently, call the tools you need, and report ONLY the final results by "
+            "title and date. "
             "CONTENT CREATION RULE: When a user asks you to plan, create, or schedule posts "
             "but does NOT specify a topic, theme, or actual content direction, you MUST ask "
             "1-3 concise clarifying questions first — e.g. what topic or theme, what goal or tone, "
@@ -696,13 +740,23 @@ async def _run_chat_loop(
             "NEVER create placeholder titles like 'Post 1', 'Post 2', 'Post 3', or posts with "
             "generic/empty captions. Every post must have a meaningful title and a full caption "
             "tailored to the platform, using the user's brand voice and the content they described. "
-            "ANTI-HALLUCINATION RULE: You MUST call a tool for any request to create, update, "
-            "reschedule, or move posts. NEVER claim to have created, updated, or moved posts "
-            "unless you actually called the appropriate tool during this turn. "
-            "For bulk moves (e.g. 'move June posts to July'): call list_posts first to get IDs "
-            "and current dates, then call bulk_reschedule_posts with all posts in a single call, "
-            "computing the equivalent date in the destination month for each post "
-            "(e.g. June 5 → July 5, June 20 → July 20). "
+            "ANTI-HALLUCINATION RULE (CRITICAL): Never invent, guess, or reuse post IDs. "
+            "Real IDs come ONLY from a list_posts result in the current conversation — "
+            "numbers like 123, 456, or 789 are fabrications and must never be used. "
+            "You MUST call a tool for any request to create, update, reschedule, move, or delete "
+            "posts. NEVER claim a post was created, updated, moved, rescheduled, or deleted unless "
+            "you actually called the matching tool THIS turn AND its result reported success. "
+            "If you have not called the tool, you have not done the thing — say what you are about "
+            "to do, then call the tool; do not narrate success in advance. "
+            "RESCHEDULE / MOVE WORKFLOW: Always call list_posts FIRST to get the real IDs and "
+            "current dates, then immediately call bulk_reschedule_posts (or reschedule_post for a "
+            "single post) using those exact IDs, in the SAME turn — no confirmation step. "
+            "For bulk moves (e.g. 'move June posts to August') pass every post in one "
+            "bulk_reschedule_posts call, computing the equivalent date in the destination month for "
+            "each post (e.g. June 5 → August 5, June 20 → August 20). "
+            "NO CONFIRMATION GATE for reschedule, move, create, or update — execute those "
+            "immediately once you have the real IDs. The 'shall I confirm?' step applies to "
+            "delete_posts ONLY (see DELETE RULE). "
             "MEMORY: Use save_memory to store durable user facts — brand details, recurring campaigns, "
             "tone preferences, ongoing projects, key decisions. Call it when the user says "
             "'remember that…' AND proactively when you learn something clearly durable. "
@@ -729,8 +783,26 @@ async def _run_chat_loop(
     messages: list[dict] = [system_msg] + messages_in
     changes: list[dict] = []
 
+    last_user = _last_user_text(messages_in)
+    reschedule_intent = bool(_RESCHEDULE_INTENT_RE.search(last_user))
+    write_intent = bool(_WRITE_INTENT_RE.search(last_user))
+    tools_called_this_turn: set[str] = set()
+
+    def _finalize(reply: str) -> str:
+        """Guard against fabricated success, then strip internal ID language."""
+        wrote = bool(_WRITE_TOOLS & tools_called_this_turn) or len(changes) > 0
+        # If the user asked for a write, nothing was actually written, and the model
+        # isn't asking a clarifying question, never let a fake success reach the user.
+        if write_intent and not wrote and "?" not in reply:
+            return "I wasn't able to do that — let me try again."
+        return _scrub_id_language(reply)
+
     for i in range(MAX_CHAT_ITERATIONS):
-        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice="auto")
+        # Force a tool call on the first turn for reschedule/move intent so the model
+        # cannot narrate success without doing the work. Other turns stay 'auto' so
+        # it can produce the final natural-language reply.
+        tool_choice = "required" if (i == 0 and reschedule_intent) else "auto"
+        result = await llm.complete(messages, tools=_CHAT_TOOLS, max_tokens=2048, tool_choice=tool_choice)
 
         if not result["tool_calls"]:
             text = result["text"] or ""
@@ -738,7 +810,7 @@ async def _run_chat_loop(
             s = text.strip()
             if s.startswith("[{") or (s.startswith("{") and '"name"' in s[:120]):
                 return "I had trouble processing that request. Please try again.", changes
-            return text or "Done.", changes
+            return _finalize(text or "Done."), changes
 
         # Append assistant message (with tool_calls)
         assistant_msg: dict = {
@@ -760,6 +832,7 @@ async def _run_chat_loop(
 
         # Execute each tool and append results
         for tc in result["tool_calls"]:
+            tools_called_this_turn.add(tc.function.name)
             try:
                 tool_args = json.loads(tc.function.arguments)
             except json.JSONDecodeError:
@@ -776,9 +849,9 @@ async def _run_chat_loop(
     # Max iterations exceeded — return last assistant text if any
     for msg in reversed(messages):
         if msg.get("role") == "assistant" and msg.get("content"):
-            return msg["content"], changes
+            return _finalize(msg["content"]), changes
 
-    return "I've processed your request.", changes
+    return _finalize("I've processed your request."), changes
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 os.environ.setdefault("GROQ_API_KEY", "test-key-for-tests")
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -245,6 +246,339 @@ def test_no_raw_json_in_chat_reply(client, auth_headers):
     assert reply != raw_json_blob, "Raw JSON blob must not be the assistant reply"
     assert not reply.strip().startswith("[{"), "Reply must not start with a JSON array of objects"
     assert '"name"' not in reply, "Reply must not contain raw tool-call JSON fields"
+
+
+def test_move_june_to_august_lists_then_reschedules_with_real_ids(client, auth_headers):
+    """'Move my June posts to August' — list silently, bulk_reschedule with REAL ids,
+    no confirmation gate, and no post IDs leaked into the reply."""
+    r1 = client.post("/posts", json={
+        "title": "Summer kickoff", "caption": "Caption one",
+        "platform": "instagram", "scheduled_date": "2026-06-05",
+    }, headers=auth_headers)
+    r2 = client.post("/posts", json={
+        "title": "Mid-month promo", "caption": "Caption two",
+        "platform": "instagram", "scheduled_date": "2026-06-20",
+    }, headers=auth_headers)
+    assert r1.status_code == r2.status_code == 201
+    post1_id, post2_id = r1.json()["id"], r2.json()["id"]
+
+    seen_reschedule_ids: list = []
+    call_count = 0
+
+    async def fake_llm(messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # Model must list first to discover the real IDs
+            tc = _make_tool_call("tc-list", "list_posts", {"month": "2026-06"})
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        if call_count == 2:
+            # Pull the real IDs straight out of the list_posts tool result
+            tool_msg = next(m for m in reversed(messages) if m.get("role") == "tool")
+            listed = json.loads(tool_msg["content"])
+            ids = [p["id"] for p in listed]
+            seen_reschedule_ids.extend(ids)
+            tc = _make_tool_call("tc-bulk", "bulk_reschedule_posts", {
+                "reschedules": [
+                    {"post_id": ids[0], "scheduled_date": "2026-08-05"},
+                    {"post_id": ids[1], "scheduled_date": "2026-08-20"},
+                ]
+            })
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        return {
+            "text": (
+                "Done — I moved both posts into August: "
+                "\"Summer kickoff\" and \"Mid-month promo\" are now scheduled for August."
+            ),
+            "tool_calls": [],
+            "finish_reason": "stop",
+        }
+
+    with patch("src.backend.llm.complete", new=fake_llm):
+        r = client.post(
+            "/ai/chat",
+            json={"messages": [{"role": "user", "content": "Move my June posts to August"}]},
+            headers=auth_headers,
+        )
+
+    assert r.status_code == 200
+    data = r.json()
+
+    # Real IDs were used (the ones we created), not fabricated 123/456/789
+    assert set(seen_reschedule_ids) == {post1_id, post2_id}
+    assert 123 not in seen_reschedule_ids and 456 not in seen_reschedule_ids
+
+    # Reschedule happened immediately — no confirmation gate, changes present this turn
+    assert len(data["changes"]) == 2, f"Both posts should move in one shot, got {data['changes']}"
+
+    # Posts actually moved in the DB
+    db = TestingSessionLocal()
+    p1 = db.query(models.Post).filter(models.Post.id == post1_id).first()
+    p2 = db.query(models.Post).filter(models.Post.id == post2_id).first()
+    db.close()
+    assert str(p1.scheduled_date) == "2026-08-05"
+    assert str(p2.scheduled_date) == "2026-08-20"
+
+    # No post IDs leaked into the reply (standalone numeric tokens)
+    import re
+    reply = data["assistant_reply"]
+    for pid in (post1_id, post2_id):
+        assert not re.search(rf"\b{pid}\b", reply), (
+            f"Post ID {pid} must not appear in reply: {reply!r}"
+        )
+    assert "August" in reply or "Aug" in reply
+
+
+def test_reschedule_intent_forces_tool_choice_required_first_turn(client, auth_headers):
+    """A move/reschedule request must force tool_choice='required' on the first iteration."""
+    client.post("/posts", json={
+        "title": "Existing", "caption": "c", "platform": "instagram",
+        "scheduled_date": "2026-06-08",
+    }, headers=auth_headers)
+
+    choices: list = []
+    call_count = 0
+
+    async def fake_llm(messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        choices.append(kwargs.get("tool_choice"))
+        if call_count == 1:
+            tc = _make_tool_call("tc-list", "list_posts", {"month": "2026-06"})
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        if call_count == 2:
+            tool_msg = next(m for m in reversed(messages) if m.get("role") == "tool")
+            ids = [p["id"] for p in json.loads(tool_msg["content"])]
+            tc = _make_tool_call("tc-bulk", "bulk_reschedule_posts", {
+                "reschedules": [{"post_id": ids[0], "scheduled_date": "2026-07-08"}],
+            })
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        return {"text": "Moved \"Existing\" to July.", "tool_calls": [], "finish_reason": "stop"}
+
+    with patch("src.backend.llm.complete", new=fake_llm):
+        r = client.post(
+            "/ai/chat",
+            json={"messages": [{"role": "user", "content": "move my June post to July"}]},
+            headers=auth_headers,
+        )
+
+    assert r.status_code == 200
+    assert choices[0] == "required", f"First turn must force a tool call, got {choices[0]!r}"
+    assert choices[1] == "auto", "Later turns must relax back to 'auto'"
+
+
+def test_fabricated_reschedule_success_is_overridden(client, auth_headers):
+    """If the user asks to move posts but no write tool runs, a fake success is replaced."""
+    client.post("/posts", json={
+        "title": "Existing", "caption": "c", "platform": "instagram",
+        "scheduled_date": "2026-06-08",
+    }, headers=auth_headers)
+
+    call_count = 0
+
+    async def fake_llm(messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # Forced to call something — it lists, but then never reschedules
+            tc = _make_tool_call("tc-list", "list_posts", {"month": "2026-06"})
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        # Fabricated success with no bulk_reschedule_posts call
+        return {
+            "text": "All done! I've moved your posts to July.",
+            "tool_calls": [],
+            "finish_reason": "stop",
+        }
+
+    with patch("src.backend.llm.complete", new=fake_llm):
+        r = client.post(
+            "/ai/chat",
+            json={"messages": [{"role": "user", "content": "move my June posts to July"}]},
+            headers=auth_headers,
+        )
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["changes"] == [], "Nothing was actually moved"
+    assert "wasn't able" in data["assistant_reply"].lower(), (
+        f"Fabricated success must be overridden, got: {data['assistant_reply']!r}"
+    )
+    assert "moved" not in data["assistant_reply"].lower()
+
+
+def test_id_language_stripped_from_reply(client, auth_headers):
+    """Chain-of-thought 'I need to get their IDs first' language is scrubbed from the reply."""
+    r1 = client.post("/posts", json={
+        "title": "Launch", "caption": "c", "platform": "instagram",
+        "scheduled_date": "2026-06-09",
+    }, headers=auth_headers)
+    post_id = r1.json()["id"]
+
+    call_count = 0
+
+    async def fake_llm(messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            tc = _make_tool_call("tc-list", "list_posts", {"month": "2026-06"})
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        if call_count == 2:
+            tc = _make_tool_call("tc-bulk", "bulk_reschedule_posts", {
+                "reschedules": [{"post_id": post_id, "scheduled_date": "2026-07-09"}],
+            })
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        return {
+            "text": (
+                "I need to get their IDs first. "
+                "I've moved \"Launch\" to July."
+            ),
+            "tool_calls": [],
+            "finish_reason": "stop",
+        }
+
+    with patch("src.backend.llm.complete", new=fake_llm):
+        r = client.post(
+            "/ai/chat",
+            json={"messages": [{"role": "user", "content": "reschedule my June post to July"}]},
+            headers=auth_headers,
+        )
+
+    assert r.status_code == 200
+    reply = r.json()["assistant_reply"]
+    assert "ID" not in reply and "IDs" not in reply, f"ID language must be stripped: {reply!r}"
+    assert "Launch" in reply and "July" in reply, "Result by title/date must remain"
+
+
+def test_plan_then_move_full_scenario(client, auth_headers):
+    """Exact scenario: plan 3 IG posts → answer questions → 'move those to first week of july'
+    must actually move them and reply by title/date with no ID language."""
+    # Turn 1: vague plan request → model asks a clarifying question (no tool, no force)
+    plan_choices: list = []
+
+    async def ask_question(messages, **kwargs):
+        plan_choices.append(kwargs.get("tool_choice"))
+        return {
+            "text": "Happy to! What topic or theme should these 3 posts cover?",
+            "tool_calls": [],
+            "finish_reason": "stop",
+        }
+
+    with patch("src.backend.llm.complete", new=ask_question):
+        r = client.post("/ai/chat", json={"messages": [
+            {"role": "user", "content": "plan 3 ig posts mon/wed/fri next week"},
+        ]}, headers=auth_headers)
+    assert r.status_code == 200
+    assert "?" in r.json()["assistant_reply"], "Should ask a clarifying question"
+    assert plan_choices[0] == "auto", "Plan request must NOT be forced (allows clarifying question)"
+
+    # Turn 2: user answers → model creates the 3 posts
+    async def create_three(messages, **kwargs):
+        tc = _make_tool_call("tc-create", "bulk_create_posts", {"posts": [
+            {"title": "Behind the scenes", "caption": "BTS look", "platform": "instagram", "scheduled_date": "2026-06-22"},
+            {"title": "Product spotlight", "caption": "Our best seller", "platform": "instagram", "scheduled_date": "2026-06-24"},
+            {"title": "Customer story", "caption": "Real results", "platform": "instagram", "scheduled_date": "2026-06-26"},
+        ]})
+        if not any(m.get("role") == "tool" for m in messages):
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        return {"text": "Scheduled 3 Instagram posts for Mon/Wed/Fri next week.", "tool_calls": [], "finish_reason": "stop"}
+
+    with patch("src.backend.llm.complete", new=create_three):
+        r = client.post("/ai/chat", json={"messages": [
+            {"role": "user", "content": "plan 3 ig posts mon/wed/fri next week"},
+            {"role": "assistant", "content": "What topic?"},
+            {"role": "user", "content": "behind the scenes, product spotlight, customer story"},
+        ]}, headers=auth_headers)
+    assert r.status_code == 200
+    assert len(r.json()["changes"]) == 3
+
+    db = TestingSessionLocal()
+    created = db.query(models.Post).filter(models.Post.scheduled_date.in_(
+        ["2026-06-22", "2026-06-24", "2026-06-26"]
+    )).all()
+    created_ids = sorted(p.id for p in created)
+    db.close()
+    assert len(created_ids) == 3
+
+    # Turn 3: 'move those to first week of july' → forced, lists, reschedules, clean reply
+    move_choices: list = []
+    call_count = 0
+
+    async def move_them(messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        move_choices.append(kwargs.get("tool_choice"))
+        if call_count == 1:
+            tc = _make_tool_call("tc-list", "list_posts", {"month": "2026-06"})
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        if call_count == 2:
+            tool_msg = next(m for m in reversed(messages) if m.get("role") == "tool")
+            ids = [p["id"] for p in json.loads(tool_msg["content"])]
+            july = ["2026-07-01", "2026-07-02", "2026-07-03"]
+            tc = _make_tool_call("tc-bulk", "bulk_reschedule_posts", {
+                "reschedules": [{"post_id": pid, "scheduled_date": d} for pid, d in zip(ids, july)],
+            })
+            return {"text": None, "tool_calls": [tc], "finish_reason": "tool_calls"}
+        return {
+            "text": (
+                "Moved all three into the first week of July: \"Behind the scenes\", "
+                "\"Product spotlight\" and \"Customer story\"."
+            ),
+            "tool_calls": [],
+            "finish_reason": "stop",
+        }
+
+    with patch("src.backend.llm.complete", new=move_them):
+        r = client.post("/ai/chat", json={"messages": [
+            {"role": "user", "content": "plan 3 ig posts mon/wed/fri next week"},
+            {"role": "assistant", "content": "What topic?"},
+            {"role": "user", "content": "behind the scenes, product spotlight, customer story"},
+            {"role": "assistant", "content": "Scheduled 3 posts."},
+            {"role": "user", "content": "move those to first week of july"},
+        ]}, headers=auth_headers)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert move_choices[0] == "required", "Move turn must force a tool call"
+    assert len(data["changes"]) == 3, f"All 3 posts must move, got {data['changes']}"
+
+    # Posts actually moved into the first week of July
+    db = TestingSessionLocal()
+    moved = db.query(models.Post).filter(models.Post.id.in_(created_ids)).all()
+    moved_dates = sorted(str(p.scheduled_date) for p in moved)
+    db.close()
+    assert moved_dates == ["2026-07-01", "2026-07-02", "2026-07-03"], moved_dates
+
+    # Reply references titles, contains no ID language and no raw IDs
+    reply = data["assistant_reply"]
+    assert "ID" not in reply and "IDs" not in reply
+    assert "Behind the scenes" in reply
+    for pid in created_ids:
+        assert not re.search(rf"\b{pid}\b", reply), f"ID {pid} leaked: {reply!r}"
+
+
+def test_system_prompt_enforces_id_privacy_and_no_confirmation_for_reschedule(client, auth_headers):
+    """System prompt must forbid leaking IDs and restrict the confirmation gate to deletes."""
+    captured: list[list[dict]] = []
+
+    async def capture_messages(messages, **kwargs):
+        captured.append(messages)
+        return {"text": "Sure.", "tool_calls": [], "finish_reason": "stop"}
+
+    with patch("src.backend.llm.complete", new=capture_messages):
+        client.post(
+            "/ai/chat",
+            json={"messages": [{"role": "user", "content": "move my posts"}]},
+            headers=auth_headers,
+        )
+
+    assert captured, "llm.complete should have been called"
+    system_content = captured[0][0]["content"]
+    assert "ID PRIVACY" in system_content, "Prompt must contain the ID privacy rule"
+    assert "NO CONFIRMATION GATE" in system_content, (
+        "Prompt must state reschedule/create/update have no confirmation gate"
+    )
+    assert "Never invent" in system_content, "Prompt must forbid inventing post IDs"
+    assert "list_posts FIRST" in system_content, "Prompt must require list_posts before rescheduling"
 
 
 def test_system_prompt_contains_clarify_and_no_placeholder_rules(client, auth_headers):
