@@ -18,22 +18,42 @@ export type AuthMode = "login" | "register"
 
 export interface AuthFormProps {
   mode: AuthMode
-  onSubmit: (email: string, password: string) => void
+  /** `name` is an empty string in login mode, where the field is not rendered. */
+  onSubmit: (email: string, password: string, name: string) => void
   onToggleMode: () => void
   isLoading?: boolean
   error?: string
 }
 
+const NAME_MAX_LENGTH = 100
+
+/** Mirrors the backend rules so the user sees the problem before a round trip. */
+function validateName(value: string): string | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return "Name is required"
+  if (trimmed.length < 2) return "Name must be at least 2 characters"
+  if (trimmed.length > NAME_MAX_LENGTH) return `Name must be ${NAME_MAX_LENGTH} characters or less`
+  return undefined
+}
+
 export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, error }: AuthFormProps) {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
+  const [name, setName] = React.useState("")
+  const [nameTouched, setNameTouched] = React.useState(false)
+
+  const isLogin = mode === "login"
+  const nameError = isLogin ? undefined : validateName(name)
+  const showNameError = nameTouched && nameError
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(email, password)
+    if (!isLogin && nameError) {
+      setNameTouched(true)
+      return
+    }
+    onSubmit(email, password, name.trim())
   }
-
-  const isLogin = mode === "login"
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4" style={{ backgroundColor: "#0F0F0F" }}>
@@ -55,6 +75,36 @@ export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, erro
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="name" style={{ color: "#F5F5F5" }}>Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Ada Lovelace"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  required
+                  maxLength={NAME_MAX_LENGTH}
+                  disabled={isLoading}
+                  aria-invalid={showNameError ? true : undefined}
+                  aria-describedby={showNameError ? "name-error" : undefined}
+                  className="placeholder:text-[#888888]"
+                  style={{
+                    backgroundColor: "#0F0F0F",
+                    borderColor: showNameError ? "#E1306C" : "#2A2A2A",
+                    color: "#F5F5F5",
+                  }}
+                />
+                {showNameError && (
+                  <p id="name-error" className="text-xs" style={{ color: "#E1306C" }}>
+                    {nameError}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" style={{ color: "#F5F5F5" }}>Email</Label>
               <Input
@@ -117,8 +167,8 @@ export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, erro
           <CardFooter className="flex flex-col gap-4">
             <Button
               type="submit"
-              className="w-full text-white"
-              disabled={isLoading}
+              className="w-full text-white disabled:opacity-60"
+              disabled={isLoading || (!isLogin && nameTouched && !!nameError)}
               style={{ backgroundColor: "#E1306C" }}
             >
               {isLoading ? (

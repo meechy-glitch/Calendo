@@ -3,6 +3,7 @@ import secrets
 import calendar
 from datetime import datetime, timedelta, date
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -27,16 +28,19 @@ def _get_limit():
 @limiter.limit(_get_limit)
 def register(
     request: Request,
-    user: schemas.UserCreate,
+    user: schemas.UserRegister,
     db: Session = Depends(get_db),
 ):
-    if len(user.password) < 8:
-        raise HTTPException(
-            status_code=422, detail="Password must be at least 8 characters"
-        )
+    # Email/password/name shape is enforced by schemas.UserRegister (422).
     if crud.get_user_by_email(db, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db, user)
+    try:
+        return crud.create_user(db, user)
+    except IntegrityError:
+        # Two concurrent registrations for the same email: the unique constraint
+        # wins the race. Report it as a 400, not a 500.
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Email already registered")
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -201,6 +205,10 @@ def update_me(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    # Scoped to the caller: current_user comes from the JWT subject, and no
+    # field on UserMeUpdate can point the write at another row.
+    if body.name is not None:
+        current_user.name = body.name
     if body.lead_reminders_enabled is not None:
         current_user.lead_reminders_enabled = body.lead_reminders_enabled
     db.commit()

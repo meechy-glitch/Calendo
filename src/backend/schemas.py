@@ -1,12 +1,48 @@
 from datetime import date, datetime
 from typing import Any, Optional, List
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 from src.backend.models import PlatformEnum, StatusEnum
 
 
+NAME_MAX_LENGTH = 100
+
+
+def _clean_name(value: object) -> str:
+    """Strip surrounding whitespace and reject blank / too-short / too-long names.
+
+    Raised as ValueError so pydantic reports it as a 422 with our own wording.
+    """
+    if not isinstance(value, str):
+        raise ValueError("Name must be text")
+    name = value.strip()
+    if not name:
+        raise ValueError("Name is required")
+    if len(name) < 2:
+        raise ValueError("Name must be at least 2 characters")
+    if len(name) > NAME_MAX_LENGTH:
+        raise ValueError(f"Name must be {NAME_MAX_LENGTH} characters or less")
+    return name
+
+
 class UserCreate(BaseModel):
+    """Login credentials — also the shape used to seed the demo account."""
+
     email: EmailStr
     password: str
+
+
+class UserRegister(BaseModel):
+    """Registration payload. Name is required here but nullable in the DB,
+    because accounts created before this feature have none."""
+
+    email: EmailStr
+    password: str = Field(min_length=8)
+    name: str
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def validate_name(cls, value: object) -> str:
+        return _clean_name(value)
 
 
 class UserResponse(BaseModel):
@@ -14,6 +50,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
+    name: str | None = None
     created_at: datetime
 
 
@@ -162,12 +199,25 @@ class UserMeResponse(BaseModel):
 
     id: int
     email: str
+    name: str | None = None
     lead_reminders_enabled: bool
     created_at: datetime
 
 
 class UserMeUpdate(BaseModel):
-    lead_reminders_enabled: Optional[bool] = None
+    """Self-service profile update. Email is intentionally not editable."""
+
+    name: str | None = None
+    lead_reminders_enabled: bool | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def validate_name(cls, value: object) -> str | None:
+        # Omitting the field leaves the name untouched; sending null/blank is a
+        # clear attempt to clear it, which we reject rather than silently allow.
+        if value is None:
+            raise ValueError("Name is required")
+        return _clean_name(value)
 
 
 class MemoryResponse(BaseModel):

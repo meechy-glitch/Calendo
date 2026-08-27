@@ -38,7 +38,11 @@ def client():
 def registered_user(client):
     r = client.post(
         "/auth/register",
-        json={"email": "test@example.com", "password": "testpassword123"},
+        json={
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "name": "Test User",
+        },
     )
     assert r.status_code == 201
     return {"email": "test@example.com", "password": "testpassword123"}

@@ -20,6 +20,8 @@ import { BrandVoiceSettings } from "@/components/BrandVoiceSettings"
 import { AIMemorySettings } from "@/components/AIMemorySettings"
 import { ReadyQueue } from "@/components/ReadyQueue"
 import { NotificationSettings } from "@/components/NotificationSettings"
+import { AccountSettings } from "@/components/AccountSettings"
+import { getMeApi, displayNameFrom, type Me } from "@/services/auth"
 
 const ALL_PLATFORMS: Platform[] = ["instagram", "x", "tiktok", "linkedin", "facebook"]
 
@@ -111,9 +113,34 @@ function DashboardContent() {
   const [readyRefreshKey, setReadyRefreshKey] = useState(0)
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(false)
 
+  const [me, setMe] = useState<Me | null>(null)
+  const [isMeLoading, setIsMeLoading] = useState(true)
+
   const isMobile = useMediaQuery("(max-width: 767px)")
-  const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
+  const storedEmail = typeof window !== "undefined" ? localStorage.getItem("email") || "" : ""
+  const userEmail = me?.email || storedEmail
   const isDemo = userEmail === "demo@calendo.app"
+
+  // Falls back to the email local-part for accounts that predate the name field,
+  // and to a bare "Welcome back" when we have neither.
+  const greetingName = displayNameFrom(me?.name, userEmail)
+
+  useEffect(() => {
+    let cancelled = false
+    getMeApi()
+      .then((data) => {
+        if (!cancelled) setMe(data)
+      })
+      .catch(() => {
+        // Non-fatal: the greeting falls back to the stored email.
+      })
+      .finally(() => {
+        if (!cancelled) setIsMeLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type })
@@ -359,6 +386,15 @@ function DashboardContent() {
       {/* Today tab */}
       {activeTab === "today" && (
         <div className="mx-auto max-w-[800px] px-4 py-6 md:px-6">
+          <header className="mb-6">
+            <h1 className="text-2xl font-semibold tracking-tight" style={{ color: "#F5F5F5" }}>
+              {greetingName ? `Welcome back, ${greetingName}` : "Welcome back"}
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "#888888" }}>
+              Here&apos;s what&apos;s ready to go out today.
+            </p>
+          </header>
+
           <ReadyQueue refreshKey={readyRefreshKey} onCountChange={setReadyCount} />
           {readyCount === 0 && (
             <div
@@ -467,6 +503,13 @@ function DashboardContent() {
       {activeTab === "settings" && (
         <div className="mx-auto max-w-[640px] space-y-4 px-4 py-8 md:px-6">
           <h1 className="text-lg font-semibold" style={{ color: "#F5F5F5" }}>Settings</h1>
+
+          <AccountSettings
+            me={me}
+            isLoading={isMeLoading}
+            onMeChange={setMe}
+            onToast={showToast}
+          />
 
           <div
             className="rounded-lg border p-4"

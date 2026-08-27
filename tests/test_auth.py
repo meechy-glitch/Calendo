@@ -1,32 +1,169 @@
 def test_register_success(client):
     r = client.post(
         "/auth/register",
-        json={"email": "new@example.com", "password": "password123"},
+        json={"email": "new@example.com", "password": "password123", "name": "Ada Lovelace"},
     )
     assert r.status_code == 201
     data = r.json()
     assert data["email"] == "new@example.com"
+    assert data["name"] == "Ada Lovelace"
     assert "id" in data
     assert "hashed_password" not in data
+
+
+def test_register_strips_surrounding_whitespace_from_name(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "spaced@example.com", "password": "password123", "name": "  Grace Hopper  "},
+    )
+    assert r.status_code == 201
+    assert r.json()["name"] == "Grace Hopper"
 
 
 def test_register_duplicate_email(client, registered_user):
     r = client.post(
         "/auth/register",
-        json={"email": "test@example.com", "password": "password123"},
+        json={"email": "test@example.com", "password": "password123", "name": "Someone Else"},
     )
     assert r.status_code == 400
     assert "already registered" in r.json()["detail"]
 
 
 def test_register_missing_password(client):
-    r = client.post("/auth/register", json={"email": "no-pass@example.com"})
+    r = client.post("/auth/register", json={"email": "no-pass@example.com", "name": "No Pass"})
     assert r.status_code == 422
+    assert "Password is required" in r.json()["detail"]
+
+
+def test_register_short_password(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "short@example.com", "password": "short", "name": "Shorty McShort"},
+    )
+    assert r.status_code == 422
+    assert "Password must be at least 8 characters" in r.json()["detail"]
 
 
 def test_register_missing_email(client):
-    r = client.post("/auth/register", json={"password": "password123"})
+    r = client.post("/auth/register", json={"password": "password123", "name": "No Email"})
     assert r.status_code == 422
+    assert "Email is required" in r.json()["detail"]
+
+
+def test_register_invalid_email(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "not-an-email", "password": "password123", "name": "Bad Email"},
+    )
+    assert r.status_code == 422
+    assert "valid email address" in r.json()["detail"]
+
+
+def test_register_missing_name(client):
+    r = client.post("/auth/register", json={"email": "no-name@example.com", "password": "password123"})
+    assert r.status_code == 422
+    assert "Name is required" in r.json()["detail"]
+
+
+def test_register_blank_name(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "blank@example.com", "password": "password123", "name": "   "},
+    )
+    assert r.status_code == 422
+    assert "Name is required" in r.json()["detail"]
+
+
+def test_register_name_too_short(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "tiny@example.com", "password": "password123", "name": "A"},
+    )
+    assert r.status_code == 422
+    assert "Name must be at least 2 characters" in r.json()["detail"]
+
+
+def test_register_name_too_long(client):
+    r = client.post(
+        "/auth/register",
+        json={"email": "long@example.com", "password": "password123", "name": "A" * 101},
+    )
+    assert r.status_code == 422
+    assert "100 characters or less" in r.json()["detail"]
+
+
+def test_me_returns_id_email_and_name(client, auth_headers):
+    r = client.get("/auth/me", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["email"] == "test@example.com"
+    assert data["name"] == "Test User"
+    assert isinstance(data["id"], int)
+
+
+def test_me_name_is_null_for_accounts_created_without_one(client):
+    # The demo account predates the name field and is seeded without one.
+    token = client.post("/auth/demo").json()["access_token"]
+    r = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["name"] is None
+
+
+def test_patch_me_updates_name(client, auth_headers):
+    r = client.patch("/auth/me", json={"name": "  Renamed User  "}, headers=auth_headers)
+    assert r.status_code == 200
+    assert r.json()["name"] == "Renamed User"
+
+    again = client.get("/auth/me", headers=auth_headers)
+    assert again.json()["name"] == "Renamed User"
+
+
+def test_patch_me_rejects_blank_name(client, auth_headers):
+    r = client.patch("/auth/me", json={"name": "   "}, headers=auth_headers)
+    assert r.status_code == 422
+    assert "Name is required" in r.json()["detail"]
+
+    unchanged = client.get("/auth/me", headers=auth_headers)
+    assert unchanged.json()["name"] == "Test User"
+
+
+def test_patch_me_requires_auth(client):
+    r = client.patch("/auth/me", json={"name": "Nobody"})
+    assert r.status_code in (401, 403)
+
+
+def test_patch_me_only_touches_the_caller(client, auth_headers):
+    other = client.post(
+        "/auth/register",
+        json={"email": "other@example.com", "password": "password123", "name": "Other User"},
+    )
+    other_id = other.json()["id"]
+
+    # Even with another user's id in the body, the write is scoped to the token.
+    r = client.patch(
+        "/auth/me",
+        json={"id": other_id, "name": "Hijacked"},
+        headers=auth_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["name"] == "Hijacked"
+    assert r.json()["id"] != other_id
+
+    other_token = client.post(
+        "/auth/login", json={"email": "other@example.com", "password": "password123"}
+    ).json()["access_token"]
+    other_me = client.get("/auth/me", headers={"Authorization": f"Bearer {other_token}"})
+    assert other_me.json()["name"] == "Other User"
+
+
+def test_patch_me_cannot_change_email(client, auth_headers):
+    r = client.patch(
+        "/auth/me",
+        json={"email": "hacked@example.com", "name": "Still Me"},
+        headers=auth_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["email"] == "test@example.com"
 
 
 def test_login_success(client, registered_user):

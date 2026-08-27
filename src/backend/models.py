@@ -66,6 +66,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    # Nullable: pre-existing rows (demo + early users) were created before names existed
+    name = Column(String(100), nullable=True)
     lead_reminders_enabled = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

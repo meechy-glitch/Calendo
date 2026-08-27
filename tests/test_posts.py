@@ -93,7 +93,7 @@ def test_post_wrong_user_put_forbidden(client, auth_headers):
 
     client.post(
         "/auth/register",
-        json={"email": "user2@example.com", "password": "password123"},
+        json={"email": "user2@example.com", "password": "password123", "name": "User Two"},
     )
     login_r = client.post(
         "/auth/login",
@@ -113,7 +113,7 @@ def test_post_wrong_user_delete_forbidden(client, auth_headers):
 
     client.post(
         "/auth/register",
-        json={"email": "user3@example.com", "password": "password123"},
+        json={"email": "user3@example.com", "password": "password123", "name": "User Three"},
     )
     login_r = client.post(
         "/auth/login",

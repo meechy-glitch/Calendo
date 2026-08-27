@@ -22,10 +22,14 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.email == email).first()
 
 
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
+def create_user(
+    db: Session, user: "schemas.UserRegister | schemas.UserCreate"
+) -> models.User:
+    # UserCreate (login shape) carries no name — the demo seeder uses it.
     db_user = models.User(
         email=user.email,
         hashed_password=hash_password(user.password),
+        name=getattr(user, "name", None),
     )
     db.add(db_user)
     db.commit()

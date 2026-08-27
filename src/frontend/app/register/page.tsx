@@ -9,11 +9,11 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
-  const handleSubmit = async (email: string, password: string) => {
+  const handleSubmit = async (email: string, password: string, name: string) => {
     setIsLoading(true)
     setError(undefined)
     try {
-      await registerApi(email, password)
+      await registerApi(email, password, name)
       const data = await loginApi(email, password)
       localStorage.setItem("token", data.access_token)
       localStorage.setItem("email", email)

@@ -19,3 +19,4 @@ test.db
 .claude-flow/
 .remember/
 .pytest_cache/
+.DS_Store

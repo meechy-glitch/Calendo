@@ -1,16 +1,15 @@
-import base64
 import json
+import os
 import re
-import boto3
 from datetime import date, datetime
-from typing import Optional, Union
+from typing import Union
 from pydantic import BaseModel, field_validator, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 
 from src.backend import crud, models, schemas
 from src.backend.auth import get_current_user
-from src.backend.config import GROQ_API_KEY, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+from src.backend.config import GROQ_API_KEY
 from src.backend.database import get_db
 from src.backend.limiter import limiter
 
@@ -326,8 +325,8 @@ class _SaveMemoryArgs(BaseModel):
 
 class _ListPostsArgs(BaseModel):
     month: str
-    platform: Optional[str] = None
-    status: Optional[str] = None
+    platform: str | None = None
+    status: str | None = None
 
 
 class _PostArgs(BaseModel):
@@ -335,19 +334,19 @@ class _PostArgs(BaseModel):
     caption: str
     platform: str
     scheduled_date: str
-    scheduled_time: Optional[str] = None
-    notes: Optional[str] = None
+    scheduled_time: str | None = None
+    notes: str | None = None
 
 
 class _UpdatePostArgs(BaseModel):
     post_id: Union[int, str]
-    title: Optional[str] = None
-    caption: Optional[str] = None
-    platform: Optional[str] = None
-    scheduled_date: Optional[str] = None
-    scheduled_time: Optional[str] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
+    title: str | None = None
+    caption: str | None = None
+    platform: str | None = None
+    scheduled_date: str | None = None
+    scheduled_time: str | None = None
+    status: str | None = None
+    notes: str | None = None
 
     @field_validator("post_id", mode="before")
     @classmethod
@@ -361,7 +360,7 @@ class _UpdatePostArgs(BaseModel):
 class _RescheduleArgs(BaseModel):
     post_id: Union[int, str]
     scheduled_date: str
-    scheduled_time: Optional[str] = None
+    scheduled_time: str | None = None
 
     @field_validator("post_id", mode="before")
     @classmethod
@@ -403,7 +402,7 @@ class _DeletePostsArgs(BaseModel):
 class CaptionRequest(BaseModel):
     idea: str
     platform: str
-    brand_voice: Optional[str] = None
+    brand_voice: str | None = None
 
     @field_validator("idea")
     @classmethod
@@ -425,12 +424,12 @@ class ChatMessageIn(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessageIn]
-    timezone: Optional[str] = "UTC"
+    timezone: str | None = "UTC"
 
 
 class CaptionFromImageRequest(BaseModel):
     media_asset_id: int
-    platform: Optional[str] = None
+    platform: str | None = None
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -456,26 +455,55 @@ def _get_brand_voice_text(db: Session, user_id: int) -> str:
     return "\n\nBrand voice:\n" + "\n".join(parts) if parts else ""
 
 
-def _downscale_image(image_bytes: bytes, mime_type: Optional[str]) -> tuple[bytes, str]:
-    from PIL import Image
-    import io
-    img = Image.open(io.BytesIO(image_bytes))
-    w, h = img.size
-    long_edge = max(w, h)
-    if long_edge > 1568:
-        scale = 1568 / long_edge
-        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
-    out_fmt = "JPEG"
-    out_mime = "image/jpeg"
-    if mime_type == "image/png":
-        out_fmt, out_mime = "PNG", "image/png"
-    elif mime_type == "image/webp":
-        out_fmt, out_mime = "WEBP", "image/webp"
-    if img.mode in ("RGBA", "P") and out_fmt == "JPEG":
-        img = img.convert("RGB")
-    buf = io.BytesIO()
-    img.save(buf, format=out_fmt)
-    return buf.getvalue(), out_mime
+def _filename_words(filename: str | None) -> str:
+    """Turn 'summer-launch_02.jpg' into 'summer launch'. Returns '' when the
+    filename carries no human signal (hashes, 'IMG_1234', bare extensions)."""
+    if not filename:
+        return ""
+    stem = os.path.splitext(filename)[0]
+    words = [w for w in re.split(r"[^A-Za-z]+", stem) if len(w) > 2]
+    words = [w for w in words if w.lower() not in {"img", "image", "photo", "screenshot", "final", "copy"}]
+    return " ".join(words).strip()
+
+
+def _asset_text_context(db: Session, asset: models.MediaAsset) -> str:
+    """Collect the TEXT we know about an asset. The model is text-only and never
+    sees the image, so this is the entire basis for the captions.
+
+    One light lookup joins the asset to a post it is attached to (if any); any
+    failure there degrades to filename-only context rather than failing the request."""
+    lines: list[str] = []
+
+    words = _filename_words(asset.original_filename)
+    if words:
+        lines.append(f"Media file name suggests: {words}")
+
+    try:
+        post = (
+            db.query(models.Post)
+            .join(models.PostMedia, models.PostMedia.post_id == models.Post.id)
+            .filter(
+                models.PostMedia.media_id == asset.id,
+                models.Post.user_id == asset.user_id,
+            )
+            .order_by(models.Post.id.desc())
+            .first()
+        )
+    except Exception:
+        post = None
+
+    if post:
+        if post.title:
+            lines.append(f"Post title: {post.title}")
+        if post.caption:
+            lines.append(f"Existing caption: {post.caption}")
+        if post.notes:
+            lines.append(f"Notes: {post.notes}")
+        if post.platform:
+            value = getattr(post.platform, "value", post.platform)
+            lines.append(f"Attached to a {value} post")
+
+    return "\n".join(lines)
 
 
 def _get_memories_text(db: Session, user_id: int) -> str:
@@ -1088,33 +1116,19 @@ async def caption_from_image(
     if not asset:
         raise HTTPException(status_code=404, detail="Media asset not found")
 
-    try:
-        r2 = boto3.client(
-            "s3",
-            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-            aws_access_key_id=R2_ACCESS_KEY_ID,
-            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-            region_name="auto",
-        )
-        obj = r2.get_object(Bucket=R2_BUCKET, Key=asset.storage_key)
-        image_bytes = obj["Body"].read()
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not fetch image from storage: {exc}")
-
-    try:
-        image_bytes, out_mime = _downscale_image(image_bytes, asset.mime_type)
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not process image: {exc}")
-
-    b64 = base64.b64encode(image_bytes).decode()
-    data_url = f"data:{out_mime};base64,{b64}"
+    # The model is text-only: the image is never fetched, downscaled, or sent.
+    context = _asset_text_context(db, asset)
+    if not context:
+        context = "No text details are recorded for this media beyond that it is an image."
 
     bv_text = _get_brand_voice_text(db, current_user.id)
     platform_hint = f" for {body.platform}" if body.platform else ""
 
     system = (
-        "You are an expert social media copywriter with vision capabilities.\n"
-        "Analyze the attached image and write 3 captions.\n"
+        "You are an expert social media copywriter.\n"
+        "You cannot see the image. Write 3 captions from the text details provided, "
+        "staying general where the details are thin and never inventing specific visual "
+        "content you were not told about.\n"
         "Respond ONLY with valid JSON, no prose, no markdown fences:\n"
         '{"suggested_platform":"instagram|x|tiktok|linkedin|facebook",'
         '"captions":["caption1","caption2","caption3"],'
@@ -1125,10 +1139,10 @@ async def caption_from_image(
         {"role": "system", "content": system},
         {
             "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": data_url}},
-                {"type": "text", "text": f"Write 3 captions for this image{platform_hint}. Return JSON only."},
-            ],
+            "content": (
+                f"Write 3 captions for this post{platform_hint}. Return JSON only.\n\n"
+                f"What is known about the media:\n{context}"
+            ),
         },
     ]
 

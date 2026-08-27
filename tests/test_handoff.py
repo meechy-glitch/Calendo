@@ -121,7 +121,10 @@ def test_handoff_other_user_forbidden(client, auth_headers):
     post_id = r.json()["id"]
 
     # Register a second user
-    client.post("/auth/register", json={"email": "other@example.com", "password": "pass1234"})
+    client.post(
+        "/auth/register",
+        json={"email": "other@example.com", "password": "pass1234", "name": "Other User"},
+    )
     login = client.post("/auth/login", json={"email": "other@example.com", "password": "pass1234"})
     other_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 

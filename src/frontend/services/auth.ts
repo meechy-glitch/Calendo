@@ -51,11 +51,11 @@ export async function loginApi(email: string, password: string) {
   return res.json()
 }
 
-export async function registerApi(email: string, password: string) {
+export async function registerApi(email: string, password: string, name: string) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, name }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Registration failed" }))
@@ -72,18 +72,40 @@ function authHeaders(): HeadersInit {
   }
 }
 
-export async function getMeApi(): Promise<{ id: number; email: string; lead_reminders_enabled: boolean; created_at: string }> {
+export interface Me {
+  id: number
+  email: string
+  /** Null for accounts created before names existed. */
+  name: string | null
+  lead_reminders_enabled: boolean
+  created_at: string
+}
+
+export async function getMeApi(): Promise<Me> {
   const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() })
   if (!res.ok) throw new Error("Failed to fetch profile")
   return res.json()
 }
 
-export async function updateMeApi(data: { lead_reminders_enabled?: boolean }) {
+export async function updateMeApi(
+  data: { name?: string; lead_reminders_enabled?: boolean }
+): Promise<Me> {
   const res = await fetch(`${API_BASE}/auth/me`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Failed to update settings")
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to update settings" }))
+    throw new Error(err.detail || "Failed to update settings")
+  }
   return res.json()
+}
+
+/** "ada@example.com" -> "ada". Empty string when there is nothing usable. */
+export function displayNameFrom(name: string | null | undefined, email: string | null | undefined): string {
+  const trimmed = name?.trim()
+  if (trimmed) return trimmed
+  const localPart = email?.split("@")[0]?.trim()
+  return localPart || ""
 }
