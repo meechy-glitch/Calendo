@@ -3,7 +3,7 @@ import secrets
 import calendar
 from datetime import datetime, timedelta, date
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -214,3 +214,25 @@ def update_me(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.delete("/me", status_code=204)
+def delete_me(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Permanently delete the caller's own account.
+
+    The target is always the JWT subject resolved by get_current_user — no id
+    is accepted from the path, query or body, so there is no shape of request
+    that deletes somebody else's account.
+    """
+    if current_user.email == DEMO_EMAIL:
+        raise HTTPException(
+            status_code=403, detail="The shared demo account cannot be deleted"
+        )
+    try:
+        crud.delete_user_and_data(db, current_user.id)
+    except SQLAlchemyError:
+        # delete_user_and_data already rolled back; nothing was removed.
+        raise HTTPException(status_code=500, detail="Failed to delete account")

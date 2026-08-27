@@ -81,7 +81,7 @@ export function AuthForm({ mode, onSubmit, onToggleMode, isLoading = false, erro
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Ada Lovelace"
+                  placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => setNameTouched(true)}

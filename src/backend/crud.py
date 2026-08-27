@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Optional, List, Tuple
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 from src.backend import models, schemas
 from src.backend.auth import hash_password
@@ -229,3 +229,62 @@ def clear_memories(db: Session, user_id: int) -> int:
     count = db.query(models.Memory).filter(models.Memory.user_id == user_id).delete()
     db.commit()
     return count
+
+
+def delete_user_and_data(db: Session, user_id: int) -> None:
+    """Permanently delete a user and every row that hangs off them.
+
+    Only `memory` and `post_media` declare ON DELETE CASCADE; `posts`,
+    `media_asset`, `brand_voice` and `password_reset_tokens` point at
+    `users.id` with no delete rule, so dropping the user row alone would
+    either error or orphan data. Everything is therefore removed explicitly,
+    child-first, in one transaction — a failure anywhere rolls the whole thing
+    back rather than leaving a half-deleted account behind.
+    """
+    post_ids = [
+        row[0]
+        for row in db.query(models.Post.id).filter(models.Post.user_id == user_id).all()
+    ]
+    media_ids = [
+        row[0]
+        for row in db.query(models.MediaAsset.id)
+        .filter(models.MediaAsset.user_id == user_id)
+        .all()
+    ]
+
+    try:
+        # post_media references both posts and media_asset, so it goes first.
+        # Matching on either side also clears rows where one of this user's
+        # media was attached to one of their posts through the other column.
+        if post_ids or media_ids:
+            conditions = []
+            if post_ids:
+                conditions.append(models.PostMedia.post_id.in_(post_ids))
+            if media_ids:
+                conditions.append(models.PostMedia.media_id.in_(media_ids))
+            db.query(models.PostMedia).filter(or_(*conditions)).delete(
+                synchronize_session=False
+            )
+
+        db.query(models.Post).filter(models.Post.user_id == user_id).delete(
+            synchronize_session=False
+        )
+        db.query(models.MediaAsset).filter(models.MediaAsset.user_id == user_id).delete(
+            synchronize_session=False
+        )
+        db.query(models.BrandVoice).filter(models.BrandVoice.user_id == user_id).delete(
+            synchronize_session=False
+        )
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user_id
+        ).delete(synchronize_session=False)
+        db.query(models.Memory).filter(models.Memory.user_id == user_id).delete(
+            synchronize_session=False
+        )
+        db.query(models.User).filter(models.User.id == user_id).delete(
+            synchronize_session=False
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

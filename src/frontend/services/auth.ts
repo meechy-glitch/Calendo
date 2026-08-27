@@ -102,6 +102,28 @@ export async function updateMeApi(
   return res.json()
 }
 
+/**
+ * Permanently deletes the signed-in account. The backend resolves the target
+ * from the bearer token, so there is nothing to pass and nothing to get wrong.
+ */
+export async function deleteMeApi(): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to delete account" }))
+    throw new Error(err.detail || "Failed to delete account")
+  }
+}
+
+/** Wipes every trace of the session from this browser. */
+export function clearAuthState(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem("token")
+  localStorage.removeItem("email")
+}
+
 /** "ada@example.com" -> "ada". Empty string when there is nothing usable. */
 export function displayNameFrom(name: string | null | undefined, email: string | null | undefined): string {
   const trimmed = name?.trim()
